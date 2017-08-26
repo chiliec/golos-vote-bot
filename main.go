@@ -46,15 +46,21 @@ func main() {
 	updates, err := bot.GetUpdatesChan(u)
 
 	for update := range updates {
+		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 		if update.Message == nil {
 			continue
 		}
-
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		msg.ReplyToMessageID = update.Message.MessageID
-
+		if update.Message.IsCommand() {
+			switch update.Message.Command() {
+			case "start":
+				keyButton := tgbotapi.NewKeyboardButton("🔑 Ключница")
+				aboutButton := tgbotapi.NewKeyboardButton("🐞 О боте")
+				buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
+				keyboard := tgbotapi.NewReplyKeyboard(buttons)
+				msg.ReplyMarkup = keyboard
+			}
+		}
 		bot.Send(msg)
 	}
 }
