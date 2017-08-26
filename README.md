@@ -1,0 +1,1 @@
+# golos-vote-bot
