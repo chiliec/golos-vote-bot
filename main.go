@@ -19,11 +19,15 @@ import (
 var (
 	postingKey string
 	database   *sql.DB
+	logins     map[int]string
 )
 
 const (
 	rpc   = "wss://ws.golos.io"
 	chain = "golos"
+
+	keyButtonText   = "🔑 Ключница"
+	aboutButtonText = "🐞 О боте"
 )
 
 func init() {
@@ -31,6 +35,7 @@ func init() {
 	flag.Parse()
 
 	database = db.InitDB("./db/database.db")
+	logins = map[int]string{}
 }
 
 func main() {
@@ -63,27 +68,31 @@ func main() {
 }
 
 func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
-	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+	log.Printf("[%s] %s", update.Message.From.UserName, "")
 	if update.Message != nil {
-		userMessageText := update.Message.Text
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		if update.Message.IsCommand() {
-			switch update.Message.Command() {
-			case "start":
-				keyButton := tgbotapi.NewKeyboardButton("🔑 Ключница")
-				aboutButton := tgbotapi.NewKeyboardButton("🐞 О боте")
-				buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
-				keyboard := tgbotapi.NewReplyKeyboard(buttons)
-				msg.ReplyMarkup = keyboard
-			}
-		}
-
 		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
 		if err != nil {
 			return err
 		}
-		if regexp.MatchString(userMessageText) {
-			matched := regexp.FindStringSubmatch(userMessageText)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+		if update.Message.IsCommand() {
+			switch update.Message.Command() {
+			case "start":
+				keyButton := tgbotapi.NewKeyboardButton(keyButtonText)
+				aboutButton := tgbotapi.NewKeyboardButton(aboutButtonText)
+				buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
+				keyboard := tgbotapi.NewReplyKeyboard(buttons)
+				msg.ReplyMarkup = keyboard
+			}
+		} else if update.Message.Text == keyButtonText {
+			msg.Text = "Введите логин на Голосе"
+			setWaitLogin(update.Message.From.ID)
+		} else if update.Message.Text == aboutButtonText {
+			msg.Text = "Бот для блого-социальной сети на блокчейне \"Голос\"\n" +
+				"Нет времени голосовать, но хочется зарабатывать? Добавьте приватный постинг ключ и мы распорядимся вашей Силой голоса наилучшим образом!\n" +
+				"Автор: @babin"
+		} else if regexp.MatchString(update.Message.Text) {
+			matched := regexp.FindStringSubmatch(update.Message.Text)
 			log.Println(matched)
 			author, permalink := matched[2], matched[3]
 			voter := "chiliec"
@@ -107,10 +116,39 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			} else {
 				msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
 			}
+		} else if wait, login := isWaitingKey(update.Message.From.ID); wait && login == "" {
+			msg.Text = "Введите приватный ключ"
+			setWaitKey(update.Message.From.ID, update.Message.Text)
+		} else if wait, login := isWaitingKey(update.Message.From.ID); wait && login != "" {
+			log.Println("Сейчас нужно сохранить логин и приватный ключ!")
+			forgetLogin(update.Message.From.ID)
+		} else {
+			msg.Text = "Команда не распознана"
 		}
 		bot.Send(msg)
 	}
 	return nil
+}
+
+func forgetLogin(userID int) {
+	delete(logins, userID)
+}
+
+func setWaitLogin(userID int) {
+	logins[userID] = ""
+}
+
+func setWaitKey(userID int, login string) {
+	logins[userID] = login
+}
+
+func isWaitingKey(userID int) (bool, string) {
+	for id, login := range logins {
+		if userID == id {
+			return true, login
+		}
+	}
+	return false, ""
 }
 
 func vote(model models.Vote) error {
