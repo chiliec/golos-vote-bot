@@ -51,62 +51,71 @@ func main() {
 	u.Timeout = 60
 
 	updates, err := bot.GetUpdatesChan(u)
-
+	if err != nil {
+		log.Panic(err)
+	}
 	for update := range updates {
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-		if update.Message != nil {
-			userMessageText := update.Message.Text
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-			if update.Message.IsCommand() {
-				switch update.Message.Command() {
-				case "start":
-					keyButton := tgbotapi.NewKeyboardButton("🔑 Ключница")
-					aboutButton := tgbotapi.NewKeyboardButton("🐞 О боте")
-					buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
-					keyboard := tgbotapi.NewReplyKeyboard(buttons)
-					msg.ReplyMarkup = keyboard
-				}
-			}
-
-			regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
-			if err != nil {
-				log.Panic(err)
-			}
-			if regexp.MatchString(userMessageText) {
-				matched := regexp.FindStringSubmatch(userMessageText)
-				log.Println(matched)
-				author, permalink := matched[2], matched[3]
-				voter := "chiliec"
-				percent := 65
-				voteModel := models.Vote{
-					UserID:    update.Message.From.ID,
-					Voter:     voter,
-					Author:    author,
-					Permalink: permalink,
-					Percent:   percent,
-				}
-				msg.ReplyToMessageID = update.Message.MessageID
-				err := vote(voteModel)
-				if err != nil {
-					switch err.(type) {
-					case *ErrorAlreadyVoted:
-						msg.Text = "Уже голосовал за этот пост!"
-					default:
-						msg.Text = "Не смог прогосовать, попробуйте ещё раз"
-					}
-				} else {
-					msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
-				}
-			}
-			bot.Send(msg)
+		err := processMessage(bot, update)
+		if err != nil {
+			log.Println(err)
 		}
 	}
+}
+
+func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
+	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+	if update.Message != nil {
+		userMessageText := update.Message.Text
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+		if update.Message.IsCommand() {
+			switch update.Message.Command() {
+			case "start":
+				keyButton := tgbotapi.NewKeyboardButton("🔑 Ключница")
+				aboutButton := tgbotapi.NewKeyboardButton("🐞 О боте")
+				buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
+				keyboard := tgbotapi.NewReplyKeyboard(buttons)
+				msg.ReplyMarkup = keyboard
+			}
+		}
+
+		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
+		if err != nil {
+			return err
+		}
+		if regexp.MatchString(userMessageText) {
+			matched := regexp.FindStringSubmatch(userMessageText)
+			log.Println(matched)
+			author, permalink := matched[2], matched[3]
+			voter := "chiliec"
+			percent := 65
+			voteModel := models.Vote{
+				UserID:    update.Message.From.ID,
+				Voter:     voter,
+				Author:    author,
+				Permalink: permalink,
+				Percent:   percent,
+			}
+			msg.ReplyToMessageID = update.Message.MessageID
+			err := vote(voteModel)
+			if err != nil {
+				switch err.(type) {
+				case *ErrorAlreadyVoted:
+					msg.Text = "Уже голосовал за этот пост!"
+				default:
+					msg.Text = "Не смог прогосовать, попробуйте ещё раз"
+				}
+			} else {
+				msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
+			}
+		}
+		bot.Send(msg)
+	}
+	return nil
 }
 
 func vote(model models.Vote) error {
 	exists := model.Exists(database)
 	if exists {
-		log.Println("Already voted!!!")
 		return NewErrorAlreadyVoted("Уже проголосовали!")
 	}
 	weight := model.Percent * 100
