@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 
 var (
 	postingKey string
+	database   *sql.DB
 )
 
 const (
@@ -27,6 +29,8 @@ const (
 func init() {
 	flag.StringVar(&postingKey, "postingKey", "", "posting key")
 	flag.Parse()
+
+	database = db.InitDB("./db/database.db")
 }
 
 func main() {
@@ -38,8 +42,6 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-
-	database := db.InitDB("./db/database.db")
 
 	bot.Debug = true
 
@@ -76,15 +78,24 @@ func main() {
 				author, permalink := matched[2], matched[3]
 				voter := "chiliec"
 				percent := 65
-				voteModel := models.Vote{voter, author, permalink, percent}
-				err := vote(voteModel)
+				voteModel := models.Vote{
+					UserID:    update.Message.From.ID,
+					Voter:     voter,
+					Author:    author,
+					Permalink: permalink,
+					Percent:   percent,
+				}
 				msg.ReplyToMessageID = update.Message.MessageID
+				err := vote(voteModel)
 				if err != nil {
-					msg.Text = "Не смог прогосовать, попробуйте ещё раз"
+					switch err.(type) {
+					case *ErrorAlreadyVoted:
+						msg.Text = "Уже голосовал за этот пост!"
+					default:
+						msg.Text = "Не смог прогосовать, попробуйте ещё раз"
+					}
 				} else {
 					msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
-					result, err := voteModel.Save(database, update.Message.From.ID)
-					log.Println(result, err)
 				}
 			}
 			bot.Send(msg)
@@ -93,8 +104,34 @@ func main() {
 }
 
 func vote(model models.Vote) error {
+	exists := model.Exists(database)
+	if exists {
+		log.Println("Already voted!!!")
+		return NewErrorAlreadyVoted("Уже проголосовали!")
+	}
 	weight := model.Percent * 100
 	client.Key_List = map[string]client.Keys{model.Voter: client.Keys{postingKey, "", "", ""}}
 	api := client.NewApi(rpc, chain)
-	return api.Vote(model.Voter, model.Author, model.Permalink, weight)
+	err := api.Vote(model.Voter, model.Author, model.Permalink, weight)
+	if err != nil {
+		return err
+	}
+	_, err = model.Save(database)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+type ErrorAlreadyVoted struct {
+	message string
+}
+
+func NewErrorAlreadyVoted(message string) *ErrorAlreadyVoted {
+	return &ErrorAlreadyVoted{
+		message: message,
+	}
+}
+func (e *ErrorAlreadyVoted) Error() string {
+	return e.message
 }
