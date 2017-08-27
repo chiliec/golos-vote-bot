@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -8,8 +9,10 @@ import (
 	"regexp"
 
 	"github.com/Chiliec/golos-go/client"
-	"github.com/pkg/errors"
 	"gopkg.in/telegram-bot-api.v4"
+
+	"github.com/Chiliec/golos-vote-bot/db"
+	"github.com/Chiliec/golos-vote-bot/models"
 )
 
 var (
@@ -35,6 +38,8 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	database := db.InitDB("./db/database.db")
 
 	bot.Debug = true
 
@@ -70,22 +75,26 @@ func main() {
 				log.Println(matched)
 				author, permalink := matched[2], matched[3]
 				voter := "chiliec"
-				percent := 5
-				vote(voter, author, permalink, percent)
+				percent := 65
+				voteModel := models.Vote{voter, author, permalink, percent}
+				err := vote(voteModel)
 				msg.ReplyToMessageID = update.Message.MessageID
-				msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
+				if err != nil {
+					msg.Text = "Не смог прогосовать, попробуйте ещё раз"
+				} else {
+					msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
+					result, err := voteModel.Save(database, update.Message.From.ID)
+					log.Println(result, err)
+				}
 			}
 			bot.Send(msg)
 		}
 	}
 }
 
-func vote(voter string, author string, permalink string, percent int) {
-	if percent > 100 {
-		percent = 100
-	}
-	weight := percent * 100
-	client.Key_List = map[string]client.Keys{voter: client.Keys{postingKey, "", "", ""}}
+func vote(model models.Vote) error {
+	weight := model.Percent * 100
+	client.Key_List = map[string]client.Keys{model.Voter: client.Keys{postingKey, "", "", ""}}
 	api := client.NewApi(rpc, chain)
-	fmt.Println(api.Vote(voter, author, permalink, weight))
+	return api.Vote(model.Voter, model.Author, model.Permalink, weight)
 }
