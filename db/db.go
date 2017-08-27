@@ -34,6 +34,20 @@ func createTables(db *sql.DB) {
 			log.Panic(err.Error())
 		}
 		setMigrationVersion(db, 1)
+		fallthrough
+	case 1:
+		query := `
+		CREATE TABLE credentials(
+			user_id INTEGER PRIMARY KEY NOT NULL,
+			user_name TEXT,
+			posting_key TEXT
+		);
+		`
+		_, err := db.Exec(query)
+		if err != nil {
+			log.Panic(err.Error())
+		}
+		setMigrationVersion(db, 2)
 		//fallthrough
 	}
 }

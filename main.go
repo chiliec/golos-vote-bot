@@ -121,6 +121,14 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			setWaitKey(update.Message.From.ID, update.Message.Text)
 		} else if wait, login := isWaitingKey(update.Message.From.ID); wait && login != "" {
 			log.Println("Сейчас нужно сохранить логин и приватный ключ!")
+			//credential := models.Credential{
+			//	UserID:     update.Message.From.ID,
+			//	UserName:   login,
+			//	PostingKey: update.Message.Text,
+			//}
+			//log.Println(credential)
+			msg.ReplyToMessageID = update.Message.MessageID
+			msg.Text = "Логин и приватный ключ успешно сохранён!"
 			forgetLogin(update.Message.From.ID)
 		} else {
 			msg.Text = "Команда не распознана"
