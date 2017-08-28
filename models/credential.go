@@ -9,7 +9,7 @@ type Credential struct {
 }
 
 func (credential Credential) Save(db *sql.DB) (bool, error) {
-	prepare, err := db.Prepare("INSERT OR REPLACE INTO votes(" +
+	prepare, err := db.Prepare("INSERT OR REPLACE INTO credentials(" +
 		"user_id," +
 		"user_name," +
 		"posting_key) " +
@@ -25,7 +25,7 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 }
 
 func (credential Credential) Exists(db *sql.DB) bool {
-	row := db.QueryRow("SELECT user_id FROM credentials WHERE user_id = ? AND user_name = ? AND posting_key", credential.UserID, credential.UserName, credential.PostingKey)
+	row := db.QueryRow("SELECT user_id FROM credentials WHERE user_id = ? AND user_name = ? AND posting_key = ?", credential.UserID, credential.UserName, credential.PostingKey)
 	var userID *int
 	row.Scan(&userID)
 	if userID != nil {

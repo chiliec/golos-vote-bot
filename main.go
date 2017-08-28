@@ -68,13 +68,13 @@ func main() {
 }
 
 func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
-	log.Printf("[%s] %s", update.Message.From.UserName, "")
+	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 	if update.Message != nil {
 		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
 		if err != nil {
 			return err
 		}
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		if update.Message.IsCommand() {
 			switch update.Message.Command() {
 			case "start":
@@ -121,14 +121,21 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			setWaitKey(update.Message.From.ID, update.Message.Text)
 		} else if wait, login := isWaitingKey(update.Message.From.ID); wait && login != "" {
 			log.Println("Сейчас нужно сохранить логин и приватный ключ!")
-			//credential := models.Credential{
-			//	UserID:     update.Message.From.ID,
-			//	UserName:   login,
-			//	PostingKey: update.Message.Text,
-			//}
-			//log.Println(credential)
+			credential := models.Credential{
+				UserID:     update.Message.From.ID,
+				UserName:   login,
+				PostingKey: update.Message.Text,
+			}
+			result, err := credential.Save(database)
+			if err != nil {
+				log.Println(err.Error())
+			}
 			msg.ReplyToMessageID = update.Message.MessageID
-			msg.Text = "Логин и приватный ключ успешно сохранён!"
+			if result {
+				msg.Text = "Логин и приватный ключ успешно сохранён!"
+			} else {
+				msg.Text = "Не смог сохранить логин и приватный ключ :("
+			}
 			forgetLogin(update.Message.From.ID)
 		} else {
 			msg.Text = "Команда не распознана"
