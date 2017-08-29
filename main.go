@@ -117,27 +117,29 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			} else {
 				msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
 			}
-		} else if wait, login := isWaitingKey(update.Message.From.ID); wait && login == "" {
-			msg.Text = "Введите приватный ключ"
-			setWaitKey(update.Message.From.ID, update.Message.Text)
-		} else if wait, login := isWaitingKey(update.Message.From.ID); wait && login != "" {
-			log.Println("Сейчас нужно сохранить логин и приватный ключ!")
-			credential := models.Credential{
-				UserID:     update.Message.From.ID,
-				UserName:   login,
-				PostingKey: update.Message.Text,
-			}
-			result, err := credential.Save(database)
-			if err != nil {
-				log.Println(err.Error())
-			}
-			msg.ReplyToMessageID = update.Message.MessageID
-			if result {
-				msg.Text = "Логин и приватный ключ успешно сохранён!"
+		} else if wait, login := isWaitingKey(update.Message.From.ID); wait {
+			if login == "" {
+				msg.Text = "Введите приватный ключ"
+				setWaitKey(update.Message.From.ID, update.Message.Text)
 			} else {
-				msg.Text = "Не смог сохранить логин и приватный ключ :("
+				log.Println("Сейчас нужно сохранить логин и приватный ключ!")
+				credential := models.Credential{
+					UserID:     update.Message.From.ID,
+					UserName:   login,
+					PostingKey: update.Message.Text,
+				}
+				result, err := credential.Save(database)
+				if err != nil {
+					log.Println(err.Error())
+				}
+				msg.ReplyToMessageID = update.Message.MessageID
+				if result {
+					msg.Text = "Логин и приватный ключ успешно сохранён!"
+				} else {
+					msg.Text = "Не смог сохранить логин и приватный ключ :("
+				}
+				forgetLogin(update.Message.From.ID)
 			}
-			forgetLogin(update.Message.From.ID)
 		} else {
 			msg.Text = "Команда не распознана"
 		}
