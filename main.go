@@ -30,6 +30,8 @@ const (
 	aboutButtonText = "🐞 О боте"
 )
 
+var alreadyVotedError = errors.New("Уже проголосовали!")
+
 func init() {
 	flag.StringVar(&postingKey, "postingKey", "", "posting key")
 	flag.Parse()
@@ -107,10 +109,9 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			msg.ReplyToMessageID = update.Message.MessageID
 			err := vote(voteModel)
 			if err != nil {
-				switch err.(type) {
-				case *ErrorAlreadyVoted:
+				if err == alreadyVotedError {
 					msg.Text = "Уже голосовал за этот пост!"
-				default:
+				} else {
 					msg.Text = "Не смог прогосовать, попробуйте ещё раз"
 				}
 			} else {
@@ -169,7 +170,7 @@ func isWaitingKey(userID int) (bool, string) {
 func vote(model models.Vote) error {
 	exists := model.Exists(database)
 	if exists {
-		return NewErrorAlreadyVoted("Уже проголосовали!")
+		return alreadyVotedError
 	}
 	weight := model.Percent * 100
 	client.Key_List = map[string]client.Keys{model.Voter: client.Keys{postingKey, "", "", ""}}
@@ -183,17 +184,4 @@ func vote(model models.Vote) error {
 		return err
 	}
 	return nil
-}
-
-type ErrorAlreadyVoted struct {
-	message string
-}
-
-func NewErrorAlreadyVoted(message string) *ErrorAlreadyVoted {
-	return &ErrorAlreadyVoted{
-		message: message,
-	}
-}
-func (e *ErrorAlreadyVoted) Error() string {
-	return e.message
 }
