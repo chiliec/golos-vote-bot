@@ -30,6 +30,8 @@ const (
 	aboutButtonText = "🐞 О боте"
 )
 
+var golos = client.NewApi(rpc, chain)
+
 var alreadyVotedError = errors.New("Уже проголосовали!")
 
 func init() {
@@ -175,9 +177,8 @@ func vote(model models.Vote) error {
 		return alreadyVotedError
 	}
 	weight := model.Percent * 100
-	client.Key_List = map[string]client.Keys{model.Voter: client.Keys{postingKey, "", "", ""}}
-	api := client.NewApi(rpc, chain)
-	err := api.Vote(model.Voter, model.Author, model.Permalink, weight)
+	client.Key_List[model.Voter] = client.Keys{PKey: postingKey}
+	err := golos.Vote(model.Voter, model.Author, model.Permalink, weight)
 	if err != nil {
 		return err
 	}
