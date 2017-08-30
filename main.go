@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"sync"
 
 	"github.com/Chiliec/golos-go/client"
 	"gopkg.in/telegram-bot-api.v4"
@@ -73,7 +74,7 @@ func main() {
 func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 	if update.Message != nil {
-		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
+		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
 		if err != nil {
 			return err
 		}
@@ -128,15 +129,25 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				log.Println("Error save vote model: " + err.Error())
 			}
 
-			var errors []error
 			for _, credential := range credentials {
 				client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
-				weight := voteModel.Percent * 100
-				err := golos.Vote(credential.UserName, voteModel.Author, voteModel.Permalink, weight)
-				if err != nil {
-					errors = append(errors, err)
-				}
 			}
+
+			var errors []error
+			var wg sync.WaitGroup
+			wg.Add(len(credentials))
+			for _, credential := range credentials {
+				client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+				go func(credential models.Credential) {
+					defer wg.Done()
+					weight := voteModel.Percent * 100
+					err := golos.Vote(credential.UserName, voteModel.Author, voteModel.Permalink, weight)
+					if err != nil {
+						errors = append(errors, err)
+					}
+				}(credential)
+			}
+			wg.Wait()
 			msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, len(credentials)-len(errors))
 		default:
 			if wait, login := isWaitingKey(update.Message.From.ID); wait {
@@ -144,12 +155,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 					msg.Text = "Введите приватный ключ"
 					setWaitKey(update.Message.From.ID, update.Message.Text)
 				} else {
-					log.Println("Сейчас нужно сохранить логин и приватный ключ!")
 					credential := models.Credential{
 						UserID:     update.Message.From.ID,
 						UserName:   login,
 						PostingKey: update.Message.Text,
 					}
+
+					// TODO: проверить валидность логина и ключа перед сохранением
 					result, err := credential.Save(database)
 					if err != nil {
 						log.Println(err.Error())
