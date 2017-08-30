@@ -7,17 +7,21 @@ import (
 	"strconv"
 )
 
-func InitDB(path string) *sql.DB {
+func InitDB(path string) (*sql.DB, error) {
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
-		log.Panic(err.Error())
+		return db, err
 	}
-	createTables(db)
-	return db
+	err = createTables(db)
+	return db, err
 }
 
-func createTables(db *sql.DB) {
+func createTables(db *sql.DB) error {
 	version := getMigrationVersion(db)
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 	switch version {
 	case 0:
 		query := `
@@ -29,9 +33,10 @@ func createTables(db *sql.DB) {
 			percent INTEGER
 		);
 		`
-		_, err := db.Exec(query)
+		_, err = tx.Exec(query)
 		if err != nil {
-			log.Panic(err.Error())
+			tx.Rollback()
+			return err
 		}
 		setMigrationVersion(db, 1)
 		fallthrough
@@ -45,11 +50,14 @@ func createTables(db *sql.DB) {
 		`
 		_, err := db.Exec(query)
 		if err != nil {
-			log.Panic(err.Error())
+			tx.Rollback()
+			return err
 		}
 		setMigrationVersion(db, 2)
 		//fallthrough
 	}
+	tx.Commit()
+	return nil
 }
 
 func getMigrationVersion(db *sql.DB) int {

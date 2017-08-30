@@ -38,7 +38,11 @@ func init() {
 	flag.StringVar(&postingKey, "postingKey", "", "posting key")
 	flag.Parse()
 
-	database = db.InitDB("./db/database.db")
+	db, err := db.InitDB("./db/database.db")
+	if err != nil {
+		log.Panic(err)
+	}
+	database = db
 	logins = map[int]string{}
 }
 
