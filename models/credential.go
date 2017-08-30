@@ -1,6 +1,8 @@
 package models
 
-import "database/sql"
+import (
+	"database/sql"
+)
 
 type Credential struct {
 	UserID     int
@@ -32,4 +34,21 @@ func (credential Credential) Exists(db *sql.DB) bool {
 		return true
 	}
 	return false
+}
+
+func GetAllCredentials(db *sql.DB) (credentials []Credential, err error) {
+	rows, err := db.Query("SELECT user_id, user_name, posting_key FROM credentials")
+	if err != nil {
+		return credentials, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var credential Credential
+		err := rows.Scan(&credential.UserID, &credential.UserName, &credential.PostingKey)
+		if err != nil {
+			return credentials, err
+		}
+		credentials = append(credentials, credential)
+	}
+	return credentials, err
 }

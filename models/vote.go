@@ -6,7 +6,6 @@ import (
 
 type Vote struct {
 	UserID    int
-	Voter     string
 	Author    string
 	Permalink string
 	Percent   int

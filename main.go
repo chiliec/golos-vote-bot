@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -17,9 +16,8 @@ import (
 )
 
 var (
-	postingKey string
-	database   *sql.DB
-	logins     map[int]string
+	database *sql.DB
+	logins   map[int]string
 )
 
 const (
@@ -35,9 +33,6 @@ var golos = client.NewApi(rpc, chain)
 var alreadyVotedError = errors.New("Уже проголосовали!")
 
 func init() {
-	flag.StringVar(&postingKey, "postingKey", "", "posting key")
-	flag.Parse()
-
 	db, err := db.InitDB("./db/database.db")
 	if err != nil {
 		log.Panic(err)
@@ -83,7 +78,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			return err
 		}
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-		if update.Message.IsCommand() {
+		switch {
+		case update.Message.IsCommand():
 			switch update.Message.Command() {
 			case "start":
 				keyButton := tgbotapi.NewKeyboardButton(keyButtonText)
@@ -92,62 +88,82 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				keyboard := tgbotapi.NewReplyKeyboard(buttons)
 				msg.ReplyMarkup = keyboard
 			}
-		} else if update.Message.Text == keyButtonText {
+		case update.Message.Text == keyButtonText:
 			msg.Text = "Введите логин на Голосе"
 			setWaitLogin(update.Message.From.ID)
-		} else if update.Message.Text == aboutButtonText {
+		case update.Message.Text == aboutButtonText:
 			msg.Text = "Бот для блого-социальной сети на блокчейне \"Голос\"\n" +
 				"Нет времени голосовать, но хочется зарабатывать? Добавьте приватный постинг ключ и мы распорядимся вашей Силой голоса наилучшим образом!\n" +
 				"Автор: @babin"
-		} else if regexp.MatchString(update.Message.Text) {
+			forgetLogin(update.Message.From.ID)
+		case regexp.MatchString(update.Message.Text):
 			matched := regexp.FindStringSubmatch(update.Message.Text)
-			log.Println(matched)
 			author, permalink := matched[2], matched[3]
-			voter := "chiliec"
-			percent := 65
+
+			// TODO: менять в зависимости от чата/голосующего
+			percent := 75
+
+			credentials, err := models.GetAllCredentials(database)
+			log.Printf("Загружено %d аккаунтов", len(credentials))
+			if err != nil {
+				return err
+			}
+
+			msg.ReplyToMessageID = update.Message.MessageID
+
 			voteModel := models.Vote{
 				UserID:    update.Message.From.ID,
-				Voter:     voter,
 				Author:    author,
 				Permalink: permalink,
 				Percent:   percent,
 			}
-			msg.ReplyToMessageID = update.Message.MessageID
-			err := vote(voteModel)
+
+			if voteModel.Exists(database) {
+				msg.Text = "Уже голосовал за этот пост!"
+				break
+			}
+
+			_, err = voteModel.Save(database)
 			if err != nil {
-				if err == alreadyVotedError {
-					msg.Text = "Уже голосовал за этот пост!"
-				} else {
-					msg.Text = "Не смог прогосовать, попробуйте ещё раз"
-				}
-			} else {
-				msg.Text = fmt.Sprintf("Проголосовал с силой %d%%", percent)
+				log.Println("Error save vote model: " + err.Error())
 			}
-		} else if wait, login := isWaitingKey(update.Message.From.ID); wait {
-			if login == "" {
-				msg.Text = "Введите приватный ключ"
-				setWaitKey(update.Message.From.ID, update.Message.Text)
-			} else {
-				log.Println("Сейчас нужно сохранить логин и приватный ключ!")
-				credential := models.Credential{
-					UserID:     update.Message.From.ID,
-					UserName:   login,
-					PostingKey: update.Message.Text,
-				}
-				result, err := credential.Save(database)
+
+			var errors []error
+			for _, credential := range credentials {
+				client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+				weight := voteModel.Percent * 100
+				err := golos.Vote(credential.UserName, voteModel.Author, voteModel.Permalink, weight)
 				if err != nil {
-					log.Println(err.Error())
+					errors = append(errors, err)
 				}
-				msg.ReplyToMessageID = update.Message.MessageID
-				if result {
-					msg.Text = "Логин и приватный ключ успешно сохранён!"
-				} else {
-					msg.Text = "Не смог сохранить логин и приватный ключ :("
-				}
-				forgetLogin(update.Message.From.ID)
 			}
-		} else {
-			msg.Text = "Команда не распознана"
+			msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, len(credentials)-len(errors))
+		default:
+			if wait, login := isWaitingKey(update.Message.From.ID); wait {
+				if login == "" {
+					msg.Text = "Введите приватный ключ"
+					setWaitKey(update.Message.From.ID, update.Message.Text)
+				} else {
+					log.Println("Сейчас нужно сохранить логин и приватный ключ!")
+					credential := models.Credential{
+						UserID:     update.Message.From.ID,
+						UserName:   login,
+						PostingKey: update.Message.Text,
+					}
+					result, err := credential.Save(database)
+					if err != nil {
+						log.Println(err.Error())
+					}
+					if result {
+						msg.Text = "Логин и приватный ключ успешно сохранён!"
+					} else {
+						msg.Text = "Не смог сохранить логин и приватный ключ :("
+					}
+					forgetLogin(update.Message.From.ID)
+				}
+			} else {
+				msg.Text = "Не понимаю"
+			}
 		}
 		bot.Send(msg)
 	}
@@ -173,22 +189,4 @@ func isWaitingKey(userID int) (bool, string) {
 		}
 	}
 	return false, ""
-}
-
-func vote(model models.Vote) error {
-	exists := model.Exists(database)
-	if exists {
-		return alreadyVotedError
-	}
-	weight := model.Percent * 100
-	client.Key_List[model.Voter] = client.Keys{PKey: postingKey}
-	err := golos.Vote(model.Voter, model.Author, model.Permalink, weight)
-	if err != nil {
-		return err
-	}
-	_, err = model.Save(database)
-	if err != nil {
-		return err
-	}
-	return nil
 }
