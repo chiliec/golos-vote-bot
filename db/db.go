@@ -54,6 +54,22 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 2)
+		fallthrough
+	case 2:
+		query := `
+		CREATE TABLE responses(
+			id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+			user_id INTEGER,
+			vote_id INTEGER,
+			result BOOLEAN NOT NULL CHECK (result IN (0,1))
+		);
+		`
+		_, err := tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 3)
 		//fallthrough
 	}
 	tx.Commit()
