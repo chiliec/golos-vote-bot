@@ -17,11 +17,11 @@ func InitDB(path string) (*sql.DB, error) {
 }
 
 func createTables(db *sql.DB) error {
-	version := getMigrationVersion(db)
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
+	version := getMigrationVersion(tx)
 	switch version {
 	case 0:
 		query := `
@@ -38,31 +38,31 @@ func createTables(db *sql.DB) error {
 			tx.Rollback()
 			return err
 		}
-		setMigrationVersion(db, 1)
+		setMigrationVersion(tx, 1)
 		fallthrough
 	case 1:
 		query := `
 		CREATE TABLE credentials(
 			user_id INTEGER PRIMARY KEY NOT NULL,
-			user_name TEXT,
+			user_name TEXT UNIQUE,
 			posting_key TEXT
 		);
 		`
-		_, err := db.Exec(query)
+		_, err := tx.Exec(query)
 		if err != nil {
 			tx.Rollback()
 			return err
 		}
-		setMigrationVersion(db, 2)
+		setMigrationVersion(tx, 2)
 		//fallthrough
 	}
 	tx.Commit()
 	return nil
 }
 
-func getMigrationVersion(db *sql.DB) int {
+func getMigrationVersion(tx *sql.Tx) int {
 	var version int
-	row := db.QueryRow("PRAGMA user_version")
+	row := tx.QueryRow("PRAGMA user_version")
 	err := row.Scan(&version)
 	if err != nil {
 		log.Panic(err.Error())
@@ -70,9 +70,9 @@ func getMigrationVersion(db *sql.DB) int {
 	return version
 }
 
-func setMigrationVersion(db *sql.DB, version int) {
+func setMigrationVersion(tx *sql.Tx, version int) {
 	query := "PRAGMA user_version = " + strconv.Itoa(version)
-	_, err := db.Exec(query)
+	_, err := tx.Exec(query)
 	if err != nil {
 		log.Panic(err.Error())
 	}
