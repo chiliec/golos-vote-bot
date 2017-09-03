@@ -1,10 +1,6 @@
 [[constraint]]
   branch = "master"
-  name = "github.com/Chiliec/golos-go"
-
-[[constraint]]
-  name = "github.com/pkg/errors"
-  version = "0.8.0"
+  name = "github.com/asuleymanov/golos-go"
 
 [[constraint]]
   name = "gopkg.in/telegram-bot-api.v4"
