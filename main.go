@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/asuleymanov/golos-go/client"
 	"gopkg.in/telegram-bot-api.v4"
@@ -27,6 +28,11 @@ const (
 
 	keyButtonText   = "🔑 Ключница"
 	aboutButtonText = "🐞 О боте"
+
+	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
+	groupID   = -1001143551951
+
+	waitMinutes = 1
 )
 
 var golos = client.NewApi(rpc, chain)
@@ -72,13 +78,20 @@ func main() {
 }
 
 func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
-	log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+	var chatID int64
+	if update.Message != nil {
+		chatID = update.Message.Chat.ID
+	} else if update.CallbackQuery != nil {
+		chatID = update.CallbackQuery.Message.Chat.ID
+	} else {
+		return errors.New("Не получили ID чата")
+	}
+	msg := tgbotapi.NewMessage(chatID, "")
 	if update.Message != nil {
 		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
 		if err != nil {
 			return err
 		}
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 		switch {
 		case update.Message.IsCommand():
 			switch update.Message.Command() {
@@ -101,13 +114,12 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[2], matched[3]
 
-			// TODO: менять в зависимости от чата/голосующего
-			percent := 75
-
-			credentials, err := models.GetAllCredentials(database)
-			log.Printf("Загружено %d аккаунтов", len(credentials))
-			if err != nil {
-				return err
+			percent := 1
+			if update.Message.Chat.Type != "private" {
+				percent = 3
+			}
+			if update.Message.Chat.ID == groupID {
+				percent = 100
 			}
 
 			msg.ReplyToMessageID = update.Message.MessageID
@@ -127,28 +139,30 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			_, err = voteModel.Save(database)
 			if err != nil {
 				log.Println("Error save vote model: " + err.Error())
+				msg.Text = "Не смог проголосовать за пост"
+				break
 			}
 
-			for _, credential := range credentials {
-				client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
-			}
+			msg.Text = "Открываю голосование:"
+			goodButton := tgbotapi.NewInlineKeyboardButtonData("Хороший пост", "post-id_good")
+			badButton := tgbotapi.NewInlineKeyboardButtonData("Плохой пост", "post-id_bad")
+			buttons := []tgbotapi.InlineKeyboardButton{}
+			buttons = append(buttons, goodButton)
+			row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}
+			markup := tgbotapi.InlineKeyboardMarkup{}
+			markup.InlineKeyboard = append(markup.InlineKeyboard, row)
+			msg.ReplyMarkup = markup
 
-			var errors []error
-			var wg sync.WaitGroup
-			wg.Add(len(credentials))
-			for _, credential := range credentials {
-				client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
-				go func(credential models.Credential) {
-					defer wg.Done()
-					weight := voteModel.Percent * 100
-					err := golos.Vote(credential.UserName, voteModel.Author, voteModel.Permalink, weight)
-					if err != nil {
-						errors = append(errors, err)
-					}
-				}(credential)
-			}
-			wg.Wait()
-			msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, len(credentials)-len(errors))
+			go func(voteModel models.Vote, messageID int) {
+				select {
+				case <-time.After(time.Second * 60 * waitMinutes):
+					successVotes := vote(voteModel)
+					message := tgbotapi.NewMessage(update.Message.Chat.ID, "")
+					message.ReplyToMessageID = messageID
+					message.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, successVotes)
+					bot.Send(message)
+				}
+			}(voteModel, update.Message.MessageID)
 		default:
 			if wait, login := isWaitingKey(update.Message.From.ID); wait {
 				if login == "" {
@@ -169,7 +183,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 							log.Println(err.Error())
 						}
 						if result {
-							msg.Text = "Логин и приватный ключ успешно сохранён!"
+							msg.Text = "Логин и приватный ключ успешно сохранён! " +
+								"Присоединяйтесь к нашей группе: " + groupLink
 						} else {
 							msg.Text = "Не смог сохранить логин и приватный ключ :("
 						}
@@ -184,9 +199,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				msg.Text = "Не понимаю"
 			}
 		}
-		if msg.Text != "" {
-			bot.Send(msg)
-		}
+	} else if update.CallbackQuery != nil {
+		log.Println(update.CallbackQuery)
+	}
+	if msg.Text != "" {
+		bot.Send(msg)
 	}
 	return nil
 }
@@ -210,4 +227,33 @@ func isWaitingKey(userID int) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+func vote(vote models.Vote) int {
+	credentials, err := models.GetAllCredentials(database)
+	if err != nil {
+		log.Println("Не смогли извлечь ключи из базы")
+		return 0
+	}
+	for _, credential := range credentials {
+		client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+	}
+	log.Printf("Загружено %d аккаунтов", len(credentials))
+
+	var errors []error
+	var wg sync.WaitGroup
+	wg.Add(len(credentials))
+	for _, credential := range credentials {
+		client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+		go func(credential models.Credential) {
+			defer wg.Done()
+			weight := vote.Percent * 100
+			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
+			if err != nil {
+				errors = append(errors, err)
+			}
+		}(credential)
+	}
+	wg.Wait()
+	return len(credentials) - len(errors)
 }
