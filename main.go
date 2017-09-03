@@ -161,16 +161,23 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						PostingKey: update.Message.Text,
 					}
 
-					// TODO: проверить валидность логина и ключа перед сохранением
-					result, err := credential.Save(database)
-					if err != nil {
-						log.Println(err.Error())
-					}
-					if result {
-						msg.Text = "Логин и приватный ключ успешно сохранён!"
+					client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+					// TODO: find method to just verify posting key without any actions
+					if err := golos.Follow(credential.UserName, "chiliec"); err == nil {
+						result, err := credential.Save(database)
+						if err != nil {
+							log.Println(err.Error())
+						}
+						if result {
+							msg.Text = "Логин и приватный ключ успешно сохранён!"
+						} else {
+							msg.Text = "Не смог сохранить логин и приватный ключ :("
+						}
 					} else {
-						msg.Text = "Не смог сохранить логин и приватный ключ :("
+						log.Println("Не сохранили ключ: " + err.Error())
+						msg.Text = "Логин и приватный ключ не совпадают :("
 					}
+
 					forgetLogin(update.Message.From.ID)
 				}
 			} else {
