@@ -180,11 +180,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 
 					forgetLogin(update.Message.From.ID)
 				}
-			} else {
+			} else if update.Message.Chat.Type == "private" {
 				msg.Text = "Не понимаю"
 			}
 		}
-		bot.Send(msg)
+		if msg.Text != "" {
+			bot.Send(msg)
+		}
 	}
 	return nil
 }
