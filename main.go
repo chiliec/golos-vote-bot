@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +34,8 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	waitMinutes = 1
+	waitMinutes       = 1
+	minimumVotesCount = 0
 )
 
 var golos = client.NewApi(rpc, chain)
@@ -136,16 +139,17 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				break
 			}
 
-			_, err = voteModel.Save(database)
+			voteID, err := voteModel.Save(database)
 			if err != nil {
 				log.Println("Error save vote model: " + err.Error())
 				msg.Text = "Не смог проголосовать за пост"
 				break
 			}
 
-			msg.Text = "Открываю голосование:"
-			goodButton := tgbotapi.NewInlineKeyboardButtonData("Хороший пост", "post-id_good")
-			badButton := tgbotapi.NewInlineKeyboardButtonData("Плохой пост", "post-id_bad")
+			stringVoteID := strconv.Itoa(int(voteID))
+			msg.Text = fmt.Sprintf("Голосование открыто. Завершение через %d минут", waitMinutes)
+			goodButton := tgbotapi.NewInlineKeyboardButtonData("Хороший пост", stringVoteID+"_good")
+			badButton := tgbotapi.NewInlineKeyboardButtonData("Плохой пост", stringVoteID+"_bad")
 			buttons := []tgbotapi.InlineKeyboardButton{}
 			buttons = append(buttons, goodButton)
 			row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}
@@ -153,16 +157,49 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			markup.InlineKeyboard = append(markup.InlineKeyboard, row)
 			msg.ReplyMarkup = markup
 
-			go func(voteModel models.Vote, messageID int) {
+			go func(voteModel models.Vote, messageID int, voteID int64) {
 				select {
 				case <-time.After(time.Second * 60 * waitMinutes):
-					successVotes := vote(voteModel)
-					message := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-					message.ReplyToMessageID = messageID
-					message.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, successVotes)
-					bot.Send(message)
+					responses, err := models.GetAllResponsesForVoteID(voteID, database)
+					if err != nil {
+						log.Println("Ошибка получения голосований: " + err.Error())
+					}
+					var positives int
+					var negatives int
+					for _, response := range responses {
+						if response.Result {
+							positives = positives + 1
+						} else {
+							negatives = negatives + 1
+						}
+					}
+
+					msg := tgbotapi.NewMessage(chatID, "")
+					msg.ReplyToMessageID = messageID
+					credential := models.Credential{UserID: update.Message.From.ID}
+					if positives+negatives > minimumVotesCount {
+						if positives > negatives {
+							credential.IncrementRating(database)
+							successVotes := vote(voteModel)
+							msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, successVotes)
+						} else {
+							credential.DecrementRating(database)
+							rating, err := credential.GetRating(database)
+							if err != nil {
+								log.Println(err.Error())
+							}
+							if rating < 1 {
+								// TODO: кикнуть из чата
+							}
+							msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
+						}
+					} else {
+						msg.Text = "Недостаточно голосов для решения"
+						// TODO: возможно стоит очистить голосование для возможности предложить заново
+					}
+					bot.Send(msg)
 				}
-			}(voteModel, update.Message.MessageID)
+			}(voteModel, update.Message.MessageID, voteID)
 		default:
 			if wait, login := isWaitingKey(update.Message.From.ID); wait {
 				if login == "" {
@@ -201,6 +238,41 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		}
 	} else if update.CallbackQuery != nil {
 		log.Println(update.CallbackQuery)
+		arr := strings.Split(update.CallbackQuery.Data, "_")
+		voteID, err := strconv.Atoi(arr[0])
+		if err != nil {
+			return err
+		}
+		var result bool
+		if arr[1] == "good" {
+			result = true
+		} else {
+			result = false
+		}
+		response := models.Response{
+			UserID: update.CallbackQuery.From.ID,
+			VoteID: voteID,
+			Result: result,
+		}
+		if response.Exists(database) {
+			config := tgbotapi.CallbackConfig{
+				CallbackQueryID: update.CallbackQuery.ID,
+				Text:            "Вы уже голосовали!",
+				ShowAlert:       true,
+			}
+			bot.AnswerCallbackQuery(config)
+		} else {
+			_, err := response.Save(database)
+			if err != nil {
+				return err
+			}
+			config := tgbotapi.CallbackConfig{
+				CallbackQueryID: update.CallbackQuery.ID,
+				Text:            "Голос принят",
+				ShowAlert:       true,
+			}
+			bot.AnswerCallbackQuery(config)
+		}
 	}
 	if msg.Text != "" {
 		bot.Send(msg)

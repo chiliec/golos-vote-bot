@@ -70,6 +70,17 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 3)
+		fallthrough
+	case 3:
+		query := `
+		ALTER TABLE credentials ADD COLUMN rating INTEGER NOT NULL DEFAULT 10;
+		`
+		_, err := tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 4)
 		//fallthrough
 	}
 	tx.Commit()

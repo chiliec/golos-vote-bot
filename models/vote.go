@@ -11,7 +11,7 @@ type Vote struct {
 	Percent   int
 }
 
-func (vote Vote) Save(db *sql.DB) (bool, error) {
+func (vote Vote) Save(db *sql.DB) (int64, error) {
 	prepare, err := db.Prepare("INSERT INTO votes(" +
 		"user_id," +
 		"author," +
@@ -19,13 +19,13 @@ func (vote Vote) Save(db *sql.DB) (bool, error) {
 		"percent) " +
 		"values(?, ?, ?, ?)")
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	_, err = prepare.Exec(vote.UserID, vote.Author, vote.Permalink, vote.Percent)
+	result, err := prepare.Exec(vote.UserID, vote.Author, vote.Permalink, vote.Percent)
 	if err != nil {
-		return false, err
+		return 0, err
 	}
-	return true, nil
+	return result.LastInsertId()
 }
 
 func (vote Vote) Exists(db *sql.DB) bool {
