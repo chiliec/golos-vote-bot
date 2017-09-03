@@ -3,12 +3,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/Chiliec/golos-go"
-  packages = ["client"]
-  revision = "60090d71f9e659ed3a5f2c5e68cf7185f265cd2d"
-
-[[projects]]
-  branch = "master"
   name = "github.com/asuleymanov/btc"
   packages = ["btcd/btcec","btcd/chaincfg","btcd/chaincfg/chainhash","btcd/wire","btcutil","btcutil/base58"]
   revision = "5f4113176babb9260c4576a7b9620adbbe553035"
@@ -16,7 +10,7 @@
 [[projects]]
   branch = "master"
   name = "github.com/asuleymanov/golos-go"
-  packages = [".","apis/database","apis/follow","apis/login","apis/market","apis/networkbroadcast","encoding/transaction","encoding/wif","interfaces","internal/rpc","rfc6979","transactions","translit","transports/websocket","types"]
+  packages = [".","apis/database","apis/follow","apis/login","apis/market","apis/networkbroadcast","client","encoding/transaction","encoding/wif","interfaces","internal/rpc","rfc6979","transactions","translit","transports/websocket","types"]
   revision = "9f5805e9fddf931a984f349998614e4e58e31358"
 
 [[projects]]
@@ -124,6 +118,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "93f933430a631be7d91ab410c205e2b92942883ec0111658073cccb243a00e70"
+  inputs-digest = "5f50d5b9bb6877003c834aa6723e5fa4017e593e2f97b3e2226a59c3c3177b46"
   solver-name = "gps-cdcl"
   solver-version = 1

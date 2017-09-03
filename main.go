@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/Chiliec/golos-go/client"
+	"github.com/asuleymanov/golos-go/client"
 	"gopkg.in/telegram-bot-api.v4"
 
 	"github.com/Chiliec/golos-vote-bot/db"
