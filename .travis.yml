@@ -45,4 +45,4 @@ deploy:
       && docker rm ${DOCKER_IMAGE_NAME} || true
       && docker run --name ${DOCKER_IMAGE_NAME} -e TELEGRAM_TOKEN=$TELEGRAM_TOKEN -v /opt/golosbot/db:/opt/golosbot/db -w /opt/golosbot -d $REPO:$TAG ./golos-vote-bot"
   on:
-    branch: feature/deploy
+    branch: master
