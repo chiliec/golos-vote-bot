@@ -34,7 +34,7 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	waitMinutes       = 1
+	waitMinutes       = 5
 	minimumVotesCount = 0
 )
 
@@ -61,7 +61,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	bot.Debug = false
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -104,6 +104,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
 				keyboard := tgbotapi.NewReplyKeyboard(buttons)
 				msg.ReplyMarkup = keyboard
+				msg.Text = fmt.Sprintf("Привет, %s!", update.Message.From.FirstName)
 			}
 		case update.Message.Text == keyButtonText:
 			msg.Text = "Введите логин на Голосе"
@@ -114,18 +115,20 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				"Автор: @babin"
 			forgetLogin(update.Message.From.ID)
 		case regexp.MatchString(update.Message.Text):
+			msg.ReplyToMessageID = update.Message.MessageID
+
+			if update.Message.Chat.Type == "private" {
+				msg.Text = "Присоединяйтесь к нашей группе: " + groupLink
+				break
+			}
+
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[2], matched[3]
 
-			percent := 1
-			if update.Message.Chat.Type != "private" {
-				percent = 3
-			}
+			percent := 5
 			if update.Message.Chat.ID == groupID {
 				percent = 100
 			}
-
-			msg.ReplyToMessageID = update.Message.MessageID
 
 			voteModel := models.Vote{
 				UserID:    update.Message.From.ID,
@@ -177,6 +180,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 					msg := tgbotapi.NewMessage(chatID, "")
 					msg.ReplyToMessageID = messageID
 					credential := models.Credential{UserID: update.Message.From.ID}
+
 					if positives+negatives > minimumVotesCount {
 						if positives > negatives {
 							credential.IncrementRating(database)
@@ -213,8 +217,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 					}
 
 					client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
-					// TODO: find method to just verify posting key without any actions
-					if err := golos.Follow(credential.UserName, "chiliec"); err == nil {
+					if golos.Login(credential.UserName, credential.PostingKey) {
 						result, err := credential.Save(database)
 						if err != nil {
 							log.Println(err.Error())
@@ -226,7 +229,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 							msg.Text = "Не смог сохранить логин и приватный ключ :("
 						}
 					} else {
-						log.Println("Не сохранили ключ: " + err.Error())
 						msg.Text = "Логин и приватный ключ не совпадают :("
 					}
 

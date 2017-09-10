@@ -22,7 +22,7 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, err = prepare.Exec(credential.UserID, credential.UserName, credential.PostingKey)
+	_, err = prepare.Exec(credential.UserID, credential.UserName, credential.PostingKey, credential.Rating)
 	if err != nil {
 		return false, err
 	}

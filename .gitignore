@@ -14,4 +14,4 @@
 .glide/
 .idea
 database.db
-bin
+bin/*
