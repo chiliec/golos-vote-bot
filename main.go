@@ -216,7 +216,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						PostingKey: update.Message.Text,
 					}
 
-					client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
 					if golos.Login(credential.UserName, credential.PostingKey) {
 						result, err := credential.Save(database)
 						if err != nil {
