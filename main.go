@@ -36,6 +36,7 @@ const (
 
 	waitMinutes       = 5
 	minimumVotesCount = 0
+	defaultRating     = 10
 )
 
 var golos = client.NewApi(rpc, chain)
@@ -214,6 +215,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						UserID:     update.Message.From.ID,
 						UserName:   login,
 						PostingKey: update.Message.Text,
+						Rating:     defaultRating,
 					}
 
 					if golos.Login(credential.UserName, credential.PostingKey) {
@@ -223,7 +225,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						}
 						if result {
 							msg.Text = "Логин и приватный ключ успешно сохранён! " +
-								"Присоединяйтесь к нашей группе: " + groupLink
+								"Присоединяйтесь к нашей группе для участия в курировании: " + groupLink
 						} else {
 							msg.Text = "Не смог сохранить логин и приватный ключ :("
 						}
