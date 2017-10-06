@@ -43,6 +43,6 @@ deploy:
     - ssh -o StrictHostKeyChecking=no root@${DEPLOY_HOST} "docker pull $REPO:$TAG
       && docker stop ${DOCKER_IMAGE_NAME} || true
       && docker rm ${DOCKER_IMAGE_NAME} || true
-      && docker run --name ${DOCKER_IMAGE_NAME} -e TELEGRAM_TOKEN=$TELEGRAM_TOKEN -v /opt/golosbot/db:/opt/golosbot/db -w /opt/golosbot -d $REPO:$TAG ./golos-vote-bot"
+      && docker run --name ${DOCKER_IMAGE_NAME} --restart=always -e TELEGRAM_TOKEN=$TELEGRAM_TOKEN -v /opt/golosbot/db:/opt/golosbot/db -w /opt/golosbot -d $REPO:$TAG ./golos-vote-bot"
   on:
     branch: master
