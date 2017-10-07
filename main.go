@@ -39,8 +39,6 @@ const (
 	defaultRating     = 10
 )
 
-var golos = client.NewApi(rpc, chain)
-
 var alreadyVotedError = errors.New("Уже проголосовали!")
 
 func init() {
@@ -218,6 +216,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						Rating:     defaultRating,
 					}
 
+					golos := client.NewApi(rpc, chain)
 					if golos.Login(credential.UserName, credential.PostingKey) {
 						result, err := credential.Save(database)
 						if err != nil {
@@ -323,6 +322,7 @@ func vote(vote models.Vote) int {
 		go func(credential models.Credential) {
 			defer wg.Done()
 			weight := vote.Percent * 100
+			golos := client.NewApi(rpc, chain)
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
 				errors = append(errors, err)
