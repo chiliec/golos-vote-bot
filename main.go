@@ -298,7 +298,7 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 			credential.IncrementRating(database)
 
 			successVotes := vote(voteModel)
-			msg.Text = fmt.Sprintf("Проголосовал c %d аккаунтов", successVotes)
+			msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
 			credential.DecrementRating(database)
 			rating, err := credential.GetRating(database)
