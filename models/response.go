@@ -6,12 +6,12 @@ import (
 
 type Response struct {
 	UserID int
-	VoteID int
+	VoteID int64
 	Result bool
 }
 
 func (response Response) Save(db *sql.DB) (bool, error) {
-	prepare, err := db.Prepare("INSERT INTO responses(" +
+	prepare, err := db.Prepare("INSERT OR REPLACE INTO responses(" +
 		"user_id," +
 		"vote_id," +
 		"result) " +
@@ -20,14 +20,12 @@ func (response Response) Save(db *sql.DB) (bool, error) {
 		return false, err
 	}
 	_, err = prepare.Exec(response.UserID, response.VoteID, response.Result)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return err != nil, err
 }
 
 func (response Response) Exists(db *sql.DB) bool {
-	row := db.QueryRow("SELECT id FROM responses WHERE user_id = ? AND vote_id = ?", response.UserID, response.VoteID)
+	row := db.QueryRow("SELECT id FROM responses WHERE user_id = ? AND vote_id = ?",
+		response.UserID, response.VoteID)
 	var id *int
 	row.Scan(&id)
 	if id != nil {

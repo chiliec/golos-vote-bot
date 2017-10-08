@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
@@ -34,9 +33,8 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	waitMinutes       = 5
-	minimumVotesCount = 0
-	defaultRating     = 10
+	requiredVotes = 2
+	initialRating = 10
 )
 
 var alreadyVotedError = errors.New("Уже проголосовали!")
@@ -80,13 +78,13 @@ func main() {
 }
 
 func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
-	var chatID int64
-	if update.Message != nil {
-		chatID = update.Message.Chat.ID
-	} else if update.CallbackQuery != nil {
-		chatID = update.CallbackQuery.Message.Chat.ID
-	} else {
-		return errors.New("Не получили ID чата")
+	chatID, err := getChatID(update)
+	if err != nil {
+		return err
+	}
+	userID, err := getUserID(update)
+	if err != nil {
+		return err
 	}
 	msg := tgbotapi.NewMessage(chatID, "")
 	if update.Message != nil {
@@ -130,7 +128,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			}
 
 			voteModel := models.Vote{
-				UserID:    update.Message.From.ID,
+				UserID:    userID,
 				Author:    author,
 				Permalink: permalink,
 				Percent:   percent,
@@ -143,66 +141,12 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 
 			voteID, err := voteModel.Save(database)
 			if err != nil {
-				log.Println("Error save vote model: " + err.Error())
-				msg.Text = "Не смог проголосовать за пост"
-				break
+				return err
 			}
 
-			msg.Text = fmt.Sprintf("Голосование открыто. Завершение через %d минут", waitMinutes)
-			markup := getVoteMarkup(int(voteID), 0, 0)
+			msg.Text = "Голосование открыто"
+			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
-
-			go func(voteModel models.Vote, chatID int64, userID int, messageID int, voteID int64) {
-				select {
-				case <-time.After(time.Second * 60 * waitMinutes):
-					responses, err := models.GetAllResponsesForVoteID(voteID, database)
-					if err != nil {
-						log.Println("Ошибка получения голосований: " + err.Error())
-					}
-
-					var positives, negatives int
-					for _, response := range responses {
-						if response.Result {
-							positives = positives + 1
-						} else {
-							negatives = negatives + 1
-						}
-					}
-
-					msg := tgbotapi.NewMessage(chatID, "")
-					msg.ReplyToMessageID = messageID
-					credential := models.Credential{UserID: update.Message.From.ID}
-
-					if positives+negatives > minimumVotesCount {
-						if positives > negatives {
-							credential.IncrementRating(database)
-							successVotes := vote(voteModel)
-							msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", percent, successVotes)
-						} else {
-							credential.DecrementRating(database)
-							rating, err := credential.GetRating(database)
-							if err != nil {
-								log.Println(err.Error())
-							}
-							if rating < 1 {
-								memberConfig := tgbotapi.KickChatMemberConfig{
-									ChatMemberConfig: tgbotapi.ChatMemberConfig{
-										ChatID: chatID,
-										UserID: userID,
-									},
-									UntilDate: 0,
-								}
-								bot.KickChatMember(memberConfig)
-							}
-							msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
-						}
-					} else {
-						msg.Text = "Недостаточно голосов для решения"
-						// TODO: возможно стоит очистить голосование для возможности предложить заново
-					}
-					bot.Send(msg)
-				}
-			}(voteModel, update.Message.Chat.ID, update.Message.From.ID, update.Message.MessageID, voteID)
 		default:
 			if wait, login := isWaitingKey(update.Message.From.ID); wait {
 				if login == "" {
@@ -213,7 +157,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						UserID:     update.Message.From.ID,
 						UserName:   login,
 						PostingKey: update.Message.Text,
-						Rating:     defaultRating,
+						Rating:     initialRating,
 					}
 
 					golos := client.NewApi(rpc, chain)
@@ -241,62 +185,45 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 	} else if update.CallbackQuery != nil {
 		log.Println(update.CallbackQuery.Message)
 		arr := strings.Split(update.CallbackQuery.Data, "_")
-		voteID, err := strconv.Atoi(arr[0])
+		voteStringID := arr[0]
+		action := arr[1]
+		voteID, err := strconv.ParseInt(voteStringID, 10, 64)
 		if err != nil {
 			return err
 		}
-		result := arr[1] == "good"
+		isGood := action == "good"
 		response := models.Response{
-			UserID: update.CallbackQuery.From.ID,
+			UserID: userID,
 			VoteID: voteID,
-			Result: result,
+			Result: isGood,
 		}
+		var text string
 		if response.Exists(database) {
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Вы уже голосовали!",
-				ShowAlert:       true,
-			}
-			bot.AnswerCallbackQuery(config)
+			text = "Вы уже голосовали!"
 		} else {
 			_, err := response.Save(database)
 			if err != nil {
 				return err
 			}
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Голос принят",
-				ShowAlert:       true,
-			}
-			bot.AnswerCallbackQuery(config)
-
-			responses, err := models.GetAllResponsesForVoteID(int64(voteID), database)
+			text = "Голос принят"
+			voteModel := models.GetVote(database, voteID)
+			err = verifyVotes(bot, voteModel, update)
 			if err != nil {
 				return err
 			}
-			var positives, negatives int
-			for _, response := range responses {
-				if response.Result {
-					positives = positives + 1
-				} else {
-					negatives = negatives + 1
-				}
-			}
-
-			markup := getVoteMarkup(voteID, positives, negatives)
-			updateTextConfig := tgbotapi.EditMessageTextConfig{
-				BaseEdit: tgbotapi.BaseEdit{
-					ChatID:      update.CallbackQuery.Message.Chat.ID,
-					MessageID:   update.CallbackQuery.Message.MessageID,
-					ReplyMarkup: &markup,
-				},
-				Text: update.CallbackQuery.Message.Text,
-			}
-			bot.Send(updateTextConfig)
 		}
+		config := tgbotapi.CallbackConfig{
+			CallbackQueryID: update.CallbackQuery.ID,
+			Text:            text,
+			ShowAlert:       true,
+		}
+		bot.AnswerCallbackQuery(config)
+		return nil
 	}
 	if msg.Text != "" {
 		bot.Send(msg)
+	} else {
+		return errors.New("Отсутствует текст сообщения")
 	}
 	return nil
 }
@@ -320,6 +247,81 @@ func isWaitingKey(userID int) (bool, string) {
 		}
 	}
 	return false, ""
+}
+
+func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Update) error {
+	chatID, err := getChatID(update)
+	if err != nil {
+		return err
+	}
+	userID, err := getUserID(update)
+	if err != nil {
+		return err
+	}
+	messageID, err := getMessageID(update)
+	if err != nil {
+		return err
+	}
+
+	responses, err := models.GetAllResponsesForVoteID(voteModel.VoteID, database)
+	if err != nil {
+		return err
+	}
+
+	var positives, negatives int
+	for _, response := range responses {
+		if response.Result {
+			positives = positives + 1
+		} else {
+			negatives = negatives + 1
+		}
+	}
+
+	markup := getVoteMarkup(voteModel.VoteID, positives, negatives)
+	updateTextConfig := tgbotapi.EditMessageTextConfig{
+		BaseEdit: tgbotapi.BaseEdit{
+			ChatID:      chatID,
+			MessageID:   messageID,
+			ReplyMarkup: &markup,
+		},
+		Text: update.CallbackQuery.Message.Text,
+	}
+	bot.Send(updateTextConfig)
+
+	credential := models.Credential{UserID: userID}
+
+	if positives+negatives >= requiredVotes {
+		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
+		if positives >= negatives {
+			credential.IncrementRating(database)
+
+			successVotes := vote(voteModel)
+			msg.Text = fmt.Sprintf("Проголосовал c %d аккаунтов", successVotes)
+		} else {
+			credential.DecrementRating(database)
+			rating, err := credential.GetRating(database)
+			if err != nil {
+				return err
+			}
+			msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
+			if rating < 0 {
+				memberConfig := tgbotapi.KickChatMemberConfig{
+					ChatMemberConfig: tgbotapi.ChatMemberConfig{
+						ChatID: chatID,
+						UserID: userID,
+					},
+					UntilDate: 0,
+				}
+				bot.KickChatMember(memberConfig)
+				msg.Text = "Пост отклонен, предлагающий исключен"
+			}
+		}
+		_, err := bot.Send(msg)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func vote(vote models.Vote) int {
@@ -352,8 +354,8 @@ func vote(vote models.Vote) int {
 	return len(credentials) - len(errors)
 }
 
-func getVoteMarkup(voteID, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
-	stringVoteID := strconv.Itoa(voteID)
+func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
+	stringVoteID := strconv.FormatInt(voteID, 10)
 	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Хороший пост ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
 	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Плохой пост ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
 	buttons := []tgbotapi.InlineKeyboardButton{}
@@ -362,4 +364,34 @@ func getVoteMarkup(voteID, positives int, negatives int) tgbotapi.InlineKeyboard
 	markup := tgbotapi.InlineKeyboardMarkup{}
 	markup.InlineKeyboard = append(markup.InlineKeyboard, row)
 	return markup
+}
+
+func getChatID(update tgbotapi.Update) (int64, error) {
+	if update.Message != nil {
+		return update.Message.Chat.ID, nil
+	} else if update.CallbackQuery != nil {
+		return update.CallbackQuery.Message.Chat.ID, nil
+	} else {
+		return 0, errors.New("Не получили ID чата")
+	}
+}
+
+func getUserID(update tgbotapi.Update) (int, error) {
+	if update.Message != nil {
+		return update.Message.From.ID, nil
+	} else if update.CallbackQuery != nil {
+		return update.CallbackQuery.Message.From.ID, nil
+	} else {
+		return 0, errors.New("Не получили ID пользователя")
+	}
+}
+
+func getMessageID(update tgbotapi.Update) (int, error) {
+	if update.Message != nil {
+		return update.Message.MessageID, nil
+	} else if update.CallbackQuery != nil {
+		return update.CallbackQuery.Message.MessageID, nil
+	} else {
+		return 0, errors.New("Не получили ID сообщения")
+	}
 }
