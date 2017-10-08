@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/asuleymanov/golos-go/client"
-	"gopkg.in/telegram-bot-api.v4"
+	"github.com/go-telegram-bot-api/telegram-bot-api"
 
 	"github.com/Chiliec/golos-vote-bot/db"
 	"github.com/Chiliec/golos-vote-bot/models"
