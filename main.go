@@ -148,6 +148,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 		default:
+			if update.Message.Chat.Type != "private" {
+				return nil
+			}
+			msg.Text = "Не понимаю"
 			if wait, login := isWaitingKey(update.Message.From.ID); wait {
 				if login == "" {
 					msg.Text = "Введите приватный ключ"
@@ -178,8 +182,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 
 					forgetLogin(update.Message.From.ID)
 				}
-			} else if update.Message.Chat.Type == "private" {
-				msg.Text = "Не понимаю"
 			}
 		}
 	} else if update.CallbackQuery != nil {
