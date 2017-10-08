@@ -148,15 +148,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				break
 			}
 
-			stringVoteID := strconv.Itoa(int(voteID))
 			msg.Text = fmt.Sprintf("Голосование открыто. Завершение через %d минут", waitMinutes)
-			goodButton := tgbotapi.NewInlineKeyboardButtonData("Хороший пост", stringVoteID+"_good")
-			badButton := tgbotapi.NewInlineKeyboardButtonData("Плохой пост", stringVoteID+"_bad")
-			buttons := []tgbotapi.InlineKeyboardButton{}
-			buttons = append(buttons, goodButton)
-			row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}
-			markup := tgbotapi.InlineKeyboardMarkup{}
-			markup.InlineKeyboard = append(markup.InlineKeyboard, row)
+			markup := getVoteMarkup(int(voteID), 0, 0)
 			msg.ReplyMarkup = markup
 
 			go func(voteModel models.Vote, chatID int64, userID int, messageID int, voteID int64) {
@@ -166,8 +159,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 					if err != nil {
 						log.Println("Ошибка получения голосований: " + err.Error())
 					}
-					var positives int
-					var negatives int
+
+					var positives, negatives int
 					for _, response := range responses {
 						if response.Result {
 							positives = positives + 1
@@ -246,18 +239,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			}
 		}
 	} else if update.CallbackQuery != nil {
-		log.Println(update.CallbackQuery)
+		log.Println(update.CallbackQuery.Message)
 		arr := strings.Split(update.CallbackQuery.Data, "_")
 		voteID, err := strconv.Atoi(arr[0])
 		if err != nil {
 			return err
 		}
-		var result bool
-		if arr[1] == "good" {
-			result = true
-		} else {
-			result = false
-		}
+		result := arr[1] == "good"
 		response := models.Response{
 			UserID: update.CallbackQuery.From.ID,
 			VoteID: voteID,
@@ -281,6 +269,30 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				ShowAlert:       true,
 			}
 			bot.AnswerCallbackQuery(config)
+
+			responses, err := models.GetAllResponsesForVoteID(int64(voteID), database)
+			if err != nil {
+				return err
+			}
+			var positives, negatives int
+			for _, response := range responses {
+				if response.Result {
+					positives = positives + 1
+				} else {
+					negatives = negatives + 1
+				}
+			}
+
+			markup := getVoteMarkup(voteID, positives, negatives)
+			updateTextConfig := tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:      update.CallbackQuery.Message.Chat.ID,
+					MessageID:   update.CallbackQuery.Message.MessageID,
+					ReplyMarkup: &markup,
+				},
+				Text: update.CallbackQuery.Message.Text,
+			}
+			bot.Send(updateTextConfig)
 		}
 	}
 	if msg.Text != "" {
@@ -338,4 +350,16 @@ func vote(vote models.Vote) int {
 	}
 	wg.Wait()
 	return len(credentials) - len(errors)
+}
+
+func getVoteMarkup(voteID, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
+	stringVoteID := strconv.Itoa(voteID)
+	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Хороший пост ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
+	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Плохой пост ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
+	buttons := []tgbotapi.InlineKeyboardButton{}
+	buttons = append(buttons, goodButton)
+	row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}
+	markup := tgbotapi.InlineKeyboardMarkup{}
+	markup.InlineKeyboard = append(markup.InlineKeyboard, row)
+	return markup
 }
