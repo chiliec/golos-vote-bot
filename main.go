@@ -159,7 +159,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			markup.InlineKeyboard = append(markup.InlineKeyboard, row)
 			msg.ReplyMarkup = markup
 
-			go func(voteModel models.Vote, messageID int, voteID int64) {
+			go func(voteModel models.Vote, chatID int64, userID int, messageID int, voteID int64) {
 				select {
 				case <-time.After(time.Second * 60 * waitMinutes):
 					responses, err := models.GetAllResponsesForVoteID(voteID, database)
@@ -192,7 +192,14 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 								log.Println(err.Error())
 							}
 							if rating < 1 {
-								// TODO: кикнуть из чата
+								memberConfig := tgbotapi.KickChatMemberConfig{
+									ChatMemberConfig: tgbotapi.ChatMemberConfig{
+										ChatID: chatID,
+										UserID: userID,
+									},
+									UntilDate: 0,
+								}
+								bot.KickChatMember(memberConfig)
 							}
 							msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
 						}
@@ -202,7 +209,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 					}
 					bot.Send(msg)
 				}
-			}(voteModel, update.Message.MessageID, voteID)
+			}(voteModel, update.Message.Chat.ID, update.Message.From.ID, update.Message.MessageID, voteID)
 		default:
 			if wait, login := isWaitingKey(update.Message.From.ID); wait {
 				if login == "" {
