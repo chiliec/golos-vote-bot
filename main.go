@@ -33,7 +33,7 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	requiredVotes = 2
+	requiredVotes = 1
 	initialRating = 10
 )
 
