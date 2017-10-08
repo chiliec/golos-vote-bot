@@ -5,10 +5,18 @@ import (
 )
 
 type Vote struct {
+	VoteID    int64
 	UserID    int
 	Author    string
 	Permalink string
 	Percent   int
+}
+
+func GetVote(db *sql.DB, voteID int64) Vote {
+	var vote Vote
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent FROM votes WHERE id = ?", voteID)
+	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent)
+	return vote
 }
 
 func (vote Vote) Save(db *sql.DB) (int64, error) {
