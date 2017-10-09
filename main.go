@@ -348,6 +348,7 @@ func vote(vote models.Vote) int {
 			golos := client.NewApi(rpc, chain)
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
+				log.Println("Ошибка при голосовании: " + err.Error())
 				errors = append(errors, err)
 			}
 		}(credential)
