@@ -52,9 +52,11 @@ func (db *MemDB) DeleteSync(key []byte) {
 }
 
 func (db *MemDB) Close() {
-	db.mtx.Lock()
-	defer db.mtx.Unlock()
-	db = nil
+	// Close is a noop since for an in-memory
+	// database, we don't have a destination
+	// to flush contents to nor do we want
+	// any data loss on invoking Close()
+	// See the discussion in https://github.com/tendermint/tmlibs/pull/56
 }
 
 func (db *MemDB) Print() {
@@ -82,7 +84,7 @@ func newMemDBIterator() *memDBIterator {
 }
 
 func (it *memDBIterator) Next() bool {
-	if it.last >= len(it.keys) {
+	if it.last >= len(it.keys)-1 {
 		return false
 	}
 	it.last++

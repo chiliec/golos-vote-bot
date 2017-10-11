@@ -259,12 +259,12 @@ func (api *API) GetBlock(blockNum uint32) (*Block, error) {
 }
 
 //get_ops_in_block
-func (api *API) GetOpsInBlock(blockNum uint32, only_virtual bool) ([]*OpsInBlock, error) {
+func (api *API) GetOpsInBlock(blockNum uint32, only_virtual bool) ([]*types.OperationObject, error) {
 	raw, err := api.Raw("get_ops_in_block", []interface{}{blockNum, only_virtual})
 	if err != nil {
 		return nil, err
 	}
-	var resp []*OpsInBlock
+	var resp []*types.OperationObject
 	if err := json.Unmarshal([]byte(*raw), &resp); err != nil {
 		return nil, errors.Wrapf(err, "golos-go: %v: failed to unmarshal get_ops_in_block response", APIID)
 	}
@@ -472,8 +472,32 @@ func (api *API) GetConversionRequests(accountName string) ([]*ConversionRequests
 }
 
 //get_account_history
-func (api *API) GetAccountHistory(account string, from uint64, limit uint32) (*json.RawMessage, error) {
+/*func (api *API) GetAccountHistory(account string, from uint64, limit uint32) (*json.RawMessage, error) {
 	return api.Raw("get_account_history", []interface{}{account, from, limit})
+}*/
+
+func (api *API) GetAccountHistory(account string, from uint64, limit uint32) ([]*types.OperationObject, error) {
+	raw, err := api.Raw("get_account_history", []interface{}{account, from, limit})
+	if err != nil {
+		return nil, err
+	}
+	var tmp1 [][]interface{}
+	if err := json.Unmarshal([]byte(*raw), &tmp1); err != nil {
+		return nil, err
+	}
+	var resp []*types.OperationObject
+	for _, v := range tmp1 {
+		byteData, errm := json.Marshal(&v[1])
+		if errm != nil {
+			return nil, errm
+		}
+		var tmp *types.OperationObject
+		if err := json.Unmarshal(byteData, &tmp); err != nil {
+			return nil, err
+		}
+		resp = append(resp, tmp)
+	}
+	return resp, nil
 }
 
 //get_owner_history

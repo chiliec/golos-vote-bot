@@ -164,8 +164,9 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						Rating:     initialRating,
 					}
 
-					golos := client.NewApi(rpc, chain)
-					if golos.Login(credential.UserName, credential.PostingKey) {
+					golos := client.NewApi([]string{rpc}, chain)
+					defer golos.Rpc.Close()
+					if ok, _ := golos.Rpc.Login.Login(credential.UserName, credential.PostingKey); ok {
 						result, err := credential.Save(database)
 						if err != nil {
 							log.Println(err.Error())
@@ -345,7 +346,8 @@ func vote(vote models.Vote) int {
 		go func(credential models.Credential) {
 			defer wg.Done()
 			weight := vote.Percent * 100
-			golos := client.NewApi(rpc, chain)
+			golos := client.NewApi([]string{rpc}, chain)
+			defer golos.Rpc.Close()
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
 				log.Println("Ошибка при голосовании: " + err.Error())
