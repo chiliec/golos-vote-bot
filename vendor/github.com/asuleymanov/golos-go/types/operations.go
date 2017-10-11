@@ -6,9 +6,6 @@ import (
 
 	// RPC
 	"github.com/asuleymanov/golos-go/encoding/transaction"
-
-	// Vendor
-	"github.com/pkg/errors"
 )
 
 // FC_REFLECT( steemit::chain::report_over_production_operation,
@@ -52,11 +49,13 @@ func (op *ConvertOperation) Data() interface{} {
 //             (exchange_rate) )
 
 type FeedPublishOperation struct {
-	Publisher    string `json:"publisher"`
-	ExchangeRate struct {
-		Base  string `json:"base"`
-		Quote string `json:"quote"`
-	} `json:"exchange_rate"`
+	Publisher    string   `json:"publisher"`
+	ExchangeRate ExchRate `json:"exchange_rate"`
+}
+
+type ExchRate struct {
+	Base  string `json:"base"`
+	Quote string `json:"quote"`
 }
 
 func (op *FeedPublishOperation) Type() OpType {
@@ -65,6 +64,15 @@ func (op *FeedPublishOperation) Type() OpType {
 
 func (op *FeedPublishOperation) Data() interface{} {
 	return op
+}
+
+func (op *FeedPublishOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeTransfer.Code()))
+	enc.Encode(op.Publisher)
+	enc.EncodeMoney(op.ExchangeRate.Quote)
+	enc.EncodeMoney(op.ExchangeRate.Base)
+	return enc.Err()
 }
 
 // FC_REFLECT( steemit::chain::pow,
@@ -240,13 +248,6 @@ func (op *WithdrawVestingOperation) Data() interface{} {
 //             (to_account)
 //             (percent)
 //             (auto_vest) )
-
-// FC_REFLECT( steemit::chain::witness_update_operation,
-//             (owner)
-//             (url)
-//             (block_signing_key)
-//             (props)
-//             (fee) )
 
 // FC_REFLECT( steemit::chain::account_witness_vote_operation,
 //             (account)
@@ -488,43 +489,9 @@ func (op *CommentOptionsOperation) MarshalTransaction(encoder *transaction.Encod
 }
 
 type Authority struct {
-	AccountAuths    []*Auth `json:"account_auths"`
-	KeyAuths        []*Auth `json:"key_auths"`
-	WeightThreshold uint32  `json:"weight_threshold"`
-}
-
-// XXX: Not sure about the struct field names.
-type Auth struct {
-	Key   string
-	Check uint32
-}
-
-func (auth *Auth) UnmarshalJSON(data []byte) error {
-	// The auth object is [key, check].
-	raw := make([]json.RawMessage, 2)
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
-	}
-	if len(raw) != 2 {
-		return errors.Errorf("invalid auth object: %v", string(data))
-	}
-
-	// Unmarshal Key.
-	var key string
-	if err := json.Unmarshal(raw[0], &key); err != nil {
-		return errors.Wrapf(err, "failed to unmarshal Auth.Key: %v", string(raw[0]))
-	}
-
-	// Unmarshal Check.
-	var check uint32
-	if err := json.Unmarshal(raw[1], &check); err != nil {
-		return errors.Wrapf(err, "failed to unmarshal Auth.Check: %v", string(raw[1]))
-	}
-
-	// Update fields.
-	auth.Key = key
-	auth.Check = check
-	return nil
+	AccountAuths    StringInt64Map `json:"account_auths"`
+	KeyAuths        StringInt64Map `json:"key_auths"`
+	WeightThreshold uint32         `json:"weight_threshold"`
 }
 
 type UnknownOperation struct {
@@ -540,7 +507,12 @@ func (op *UnknownOperation) Data() interface{} {
 	return op.data
 }
 
-// test
+// FC_REFLECT( steemit::chain::witness_update_operation,
+//             (owner)
+//             (url)
+//             (block_signing_key)
+//             (props)
+//             (fee) )
 type WitnessUpdateOperation struct {
 	Owner           string           `json:"owner"`
 	Url             string           `json:"url"`
@@ -555,6 +527,17 @@ func (op *WitnessUpdateOperation) Type() OpType {
 
 func (op *WitnessUpdateOperation) Data() interface{} {
 	return op
+}
+
+func (op *WitnessUpdateOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeTransfer.Code()))
+	enc.Encode(op.Owner)
+	enc.Encode(op.Url)
+	enc.Encode(op.BlockSigningKey)
+	enc.Encode(op.Props)
+	enc.Encode(op.Fee)
+	return enc.Err()
 }
 
 type CustomOperation struct {
@@ -587,12 +570,12 @@ func (op *SetWithdrawVestingRouteOperation) Data() interface{} {
 }
 
 type LimitOrderCreate2Operation struct {
-	Qwner        string `json:"owner"`
-	Orderid      uint32 `json:"orderid"`
-	AmountToSell string `json:"amount_to_sell"`
-	ExchangeRate string `json:"exchange_rate"`
-	FillOrKill   bool   `json:"fill_or_kill"`
-	Expiration   uint32 `json:"expiration"`
+	Qwner        string   `json:"owner"`
+	Orderid      uint32   `json:"orderid"`
+	AmountToSell string   `json:"amount_to_sell"`
+	ExchangeRate ExchRate `json:"exchange_rate"`
+	FillOrKill   bool     `json:"fill_or_kill"`
+	Expiration   uint32   `json:"expiration"`
 }
 
 func (op *LimitOrderCreate2Operation) Type() OpType {
@@ -786,7 +769,7 @@ func (op *TransferToSavingsOperation) MarshalTransaction(encoder *transaction.En
 	enc.EncodeUVarint(uint64(TypeTransferToSavings.Code()))
 	enc.Encode(op.From)
 	enc.Encode(op.To)
-	enc.Encode(op.Amount)
+	enc.EncodeMoney(op.Amount)
 	enc.Encode(op.Memo)
 	return enc.Err()
 }

@@ -116,10 +116,18 @@ func (api *Client) DeleteComment(author_name, permlink string) error {
 	}
 }
 
-func (api *Client) Post(author_name, title, body string, tags []string) error {
-	permlink := translit.EncodeTitle(title)
+func (api *Client) Post(author_name, title, body, permlink, ptag string, tags []string) error {
+	if permlink == "" {
+		permlink = translit.EncodeTitle(title)
+	} else {
+		permlink = translit.EncodeTitle(permlink)
+	}
 	tag := translit.EncodeTags(tags)
-	ptag := translit.EncodeTag(tags[0])
+	if ptag == "" {
+		ptag = translit.EncodeTag(tags[0])
+	} else {
+		ptag = translit.EncodeTag(ptag)
+	}
 
 	json_meta := "{\"tags\":["
 	for k, v := range tag {
@@ -149,13 +157,21 @@ func (api *Client) Post(author_name, title, body string, tags []string) error {
 	}
 }
 
-func (api *Client) Post_Vote(author_name, title, body string, tags []string, weight_post int) error {
+func (api *Client) Post_Vote(author_name, title, body, permlink, ptag string, tags []string, weight_post int) error {
 	if weight_post > 10000 {
 		weight_post = 10000
 	}
-	permlink := translit.EncodeTitle(title)
+	if permlink == "" {
+		permlink = translit.EncodeTitle(title)
+	} else {
+		permlink = translit.EncodeTitle(permlink)
+	}
 	tag := translit.EncodeTags(tags)
-	ptag := translit.EncodeTag(tags[0])
+	if ptag == "" {
+		ptag = translit.EncodeTag(tags[0])
+	} else {
+		ptag = translit.EncodeTag(ptag)
+	}
 
 	json_meta := "{\"tags\":["
 	for k, v := range tag {
@@ -194,10 +210,27 @@ func (api *Client) Post_Vote(author_name, title, body string, tags []string, wei
 	}
 }
 
-func (api *Client) Post_Options(author_name, title, body string, tags []string, percent uint16, votes, curation bool) error {
-	permlink := translit.EncodeTitle(title)
+func (api *Client) Post_Options(author_name, title, body, permlink, ptag string, tags []string, percent uint16, votes, curation bool) error {
+	if permlink == "" {
+		permlink = translit.EncodeTitle(title)
+	} else {
+		permlink = translit.EncodeTitle(permlink)
+	}
 	tag := translit.EncodeTags(tags)
-	ptag := translit.EncodeTag(tags[0])
+	if ptag == "" {
+		ptag = translit.EncodeTag(tags[0])
+	} else {
+		ptag = translit.EncodeTag(ptag)
+	}
+	MAP := "1000000.000 GBG"
+	PSD := percent
+	if percent == 0 {
+		MAP = "0.000 GBG"
+	} else if percent == 50 {
+		PSD = 10000
+	} else {
+		PSD = 0
+	}
 
 	json_meta := "{\"tags\":["
 	for k, v := range tag {
@@ -222,8 +255,8 @@ func (api *Client) Post_Options(author_name, title, body string, tags []string, 
 	txo := &types.CommentOptionsOperation{
 		Author:               author_name,
 		Permlink:             permlink,
-		MaxAcceptedPayout:    "1000000.000 GBG",
-		PercentSteemDollars:  percent,
+		MaxAcceptedPayout:    MAP,
+		PercentSteemDollars:  PSD,
 		AllowVotes:           votes,
 		AllowCurationRewards: curation,
 		Extensions:           []interface{}{},
@@ -239,13 +272,30 @@ func (api *Client) Post_Options(author_name, title, body string, tags []string, 
 	}
 }
 
-func (api *Client) Post_Options_Vote(author_name, title, body string, tags []string, percent uint16, weight_post int, votes, curation bool) error {
+func (api *Client) Post_Options_Vote(author_name, title, body, permlink, ptag string, tags []string, weight_post int, percent uint16, votes, curation bool) error {
 	if weight_post > 10000 {
 		weight_post = 10000
 	}
-	permlink := translit.EncodeTitle(title)
+	if permlink == "" {
+		permlink = translit.EncodeTitle(title)
+	} else {
+		permlink = translit.EncodeTitle(permlink)
+	}
 	tag := translit.EncodeTags(tags)
-	ptag := translit.EncodeTag(tags[0])
+	if ptag == "" {
+		ptag = translit.EncodeTag(tags[0])
+	} else {
+		ptag = translit.EncodeTag(ptag)
+	}
+	MAP := "1000000.000 GBG"
+	PSD := percent
+	if percent == 0 {
+		MAP = "0.000 GBG"
+	} else if percent == 50 {
+		PSD = 10000
+	} else {
+		PSD = 0
+	}
 
 	json_meta := "{\"tags\":["
 	for k, v := range tag {
@@ -271,11 +321,11 @@ func (api *Client) Post_Options_Vote(author_name, title, body string, tags []str
 	txo := &types.CommentOptionsOperation{
 		Author:               author_name,
 		Permlink:             permlink,
-		MaxAcceptedPayout:    "1000000.000 GBG",
-		PercentSteemDollars:  percent,
+		MaxAcceptedPayout:    MAP,
+		PercentSteemDollars:  PSD,
 		AllowVotes:           votes,
 		AllowCurationRewards: curation,
-		//Extensions:           "",
+		Extensions:           []interface{}{},
 	}
 	trx = append(trx, txo)
 
@@ -413,14 +463,14 @@ func (api *Client) Transfer(from_name, to_name, memo, ammount string) error {
 	}
 	resp, err := api.Send_Trx(from_name, tx)
 	if err != nil {
-		return errors.Wrapf(err, "Error Reblog: ")
+		return errors.Wrapf(err, "Error Transfer: ")
 	} else {
 		log.Println("[Transfer] Block -> ", resp.BlockNum, " From user -> ", from_name, " To user -> ", to_name)
 		return nil
 	}
 }
 
-func (api *Client) Login(user_name, pass string) bool {
+func (api *Client) Login(user_name, key string) bool {
 	json_string := "[\"login\",{\"account\":\"" + user_name + "\",\"app\":\"golos-go(go-steem)\"}]"
 
 	strx := &types.CustomJSONOperation{
@@ -450,7 +500,7 @@ func (api *Client) Login(user_name, pass string) bool {
 
 	// Получаем необходимый для подписи ключ
 	var keys [][]byte
-	privKey, _ := wif.Decode(string([]byte(pass)))
+	privKey, _ := wif.Decode(string([]byte(key)))
 	keys = append(keys, privKey)
 
 	// Подписываем транзакцию
@@ -466,5 +516,42 @@ func (api *Client) Login(user_name, pass string) bool {
 	} else {
 		log.Println("[Login] Block -> ", resp.BlockNum, " User -> ", user_name)
 		return true
+	}
+}
+
+func (api *Client) FeedPublish(username, base, quote string) error {
+
+	ExchR := types.ExchRate{Base: base, Quote: quote}
+	tx := &types.FeedPublishOperation{
+		Publisher:    username,
+		ExchangeRate: ExchR,
+	}
+
+	resp, err := api.Send_Trx(username, tx)
+	if err != nil {
+		return errors.Wrapf(err, "Error FeedPublish: ")
+	} else {
+		log.Println("[FeedPublish] Block -> ", resp.BlockNum, " FeedPublish user -> ", username)
+		return nil
+	}
+}
+
+func (api *Client) WitnessUpdate(username, url, signKey, acfee, fee string, blocksize uint32, sbdir uint16) error {
+
+	chprop := types.ChainProperties{AccountCreationFee: acfee, MaximumBlockSize: blocksize, SBDInterestRate: sbdir}
+	tx := &types.WitnessUpdateOperation{
+		Owner:           username,
+		Url:             url,
+		BlockSigningKey: signKey,
+		Props:           &chprop,
+		Fee:             fee,
+	}
+
+	resp, err := api.Send_Trx(username, tx)
+	if err != nil {
+		return errors.Wrapf(err, "Error WitnessUpdate: ")
+	} else {
+		log.Println("[WitnessUpdate] Block -> ", resp.BlockNum, " WitnessUpdate user -> ", username)
+		return nil
 	}
 }

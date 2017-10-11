@@ -131,32 +131,32 @@ type Config struct {
 }
 
 type DynamicGlobalProperties struct {
-	Time                     *types.Time  `json:"time"`
-	TotalPow                 *types.Int   `json:"total_pow"`
-	NumPowWitnesses          *types.Int   `json:"num_pow_witnesses"`
-	CurrentReserveRatio      *types.Int   `json:"current_reserve_ratio"`
-	ID                       *types.ID    `json:"id"`
-	CurrentSupply            string       `json:"current_supply"`
-	CurrentSBDSupply         string       `json:"current_sbd_supply"`
-	MaximumBlockSize         *types.Int   `json:"maximum_block_size"`
-	RecentSlotsFilled        *types.Int   `json:"recent_slots_filled"`
-	CurrentWitness           string       `json:"current_witness"`
-	TotalRewardShares2       *types.Int   `json:"total_reward_shares2"`
-	AverageBlockSize         *types.Int   `json:"average_block_size"`
-	CurrentAslot             *types.Int   `json:"current_aslot"`
-	LastIrreversibleBlockNum uint32       `json:"last_irreversible_block_num"`
-	TotalVestingShares       string       `json:"total_vesting_shares"`
-	TotalVersingFundSteem    string       `json:"total_vesting_fund_steem"`
-	HeadBlockID              string       `json:"head_block_id"`
-	HeadBlockNumber          types.UInt32 `json:"head_block_number"`
-	VirtualSupply            string       `json:"virtual_supply"`
-	ConfidentialSupply       string       `json:"confidential_supply"`
-	ConfidentialSBDSupply    string       `json:"confidential_sbd_supply"`
-	TotalRewardFundSteem     string       `json:"total_reward_fund_steem"`
-	TotalActivityFundSteem   string       `json:"total_activity_fund_steem"`
-	TotalActivityFundShares  *types.Int   `json:"total_activity_fund_shares"`
-	SBDInterestRate          *types.Int   `json:"sbd_interest_rate"`
-	MaxVirtualBandwidth      *types.Int   `json:"max_virtual_bandwidth"`
+	Time                     *types.Time `json:"time"`
+	TotalPow                 *types.Int  `json:"total_pow"`
+	NumPowWitnesses          *types.Int  `json:"num_pow_witnesses"`
+	CurrentReserveRatio      *types.Int  `json:"current_reserve_ratio"`
+	ID                       *types.ID   `json:"id"`
+	CurrentSupply            string      `json:"current_supply"`
+	CurrentSBDSupply         string      `json:"current_sbd_supply"`
+	MaximumBlockSize         *types.Int  `json:"maximum_block_size"`
+	RecentSlotsFilled        *types.Int  `json:"recent_slots_filled"`
+	CurrentWitness           string      `json:"current_witness"`
+	TotalRewardShares2       *types.Int  `json:"total_reward_shares2"`
+	AverageBlockSize         *types.Int  `json:"average_block_size"`
+	CurrentAslot             *types.Int  `json:"current_aslot"`
+	LastIrreversibleBlockNum uint32      `json:"last_irreversible_block_num"`
+	TotalVestingShares       string      `json:"total_vesting_shares"`
+	TotalVersingFundSteem    string      `json:"total_vesting_fund_steem"`
+	HeadBlockID              string      `json:"head_block_id"`
+	HeadBlockNumber          uint32      `json:"head_block_number"`
+	VirtualSupply            string      `json:"virtual_supply"`
+	ConfidentialSupply       string      `json:"confidential_supply"`
+	ConfidentialSBDSupply    string      `json:"confidential_sbd_supply"`
+	TotalRewardFundSteem     string      `json:"total_reward_fund_steem"`
+	TotalActivityFundSteem   string      `json:"total_activity_fund_steem"`
+	TotalActivityFundShares  *types.Int  `json:"total_activity_fund_shares"`
+	SBDInterestRate          *types.Int  `json:"sbd_interest_rate"`
+	MaxVirtualBandwidth      *types.Int  `json:"max_virtual_bandwidth"`
 }
 
 type Block struct {
@@ -483,16 +483,6 @@ type TrendingTags struct {
 	NetVotes              *types.Int `json:"net_votes"`
 	TopPosts              *types.Int `json:"top_posts"`
 	Comments              *types.Int `json:"comments"`
-}
-
-type OpsInBlock struct {
-	TrxID      string         `json:"trx_id"`
-	Block      *types.Int     `json:"block"`
-	TrxInBlock *types.Int     `json:"trx_in_block"`
-	OpInTrx    *types.Int     `json:"op_in_trx"`
-	VirtualOp  *types.Int     `json:"virtual_op"`
-	Timestamp  string         `json:"timestamp"`
-	Op         []*interface{} `json:"op"`
 }
 
 type Categories struct {
