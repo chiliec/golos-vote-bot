@@ -27,20 +27,21 @@ const (
 	rpc   = "wss://ws.golos.io"
 	chain = "golos"
 
-	keyButtonText   = "🔑 Ключница"
-	aboutButtonText = "🐞 О боте"
+	addKeyButtonText    = "🗝 Добавить ключ"
+	removeKeyButtonText = "❌ Удалить ключ"
 
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	requiredVotes = 1
-	initialRating = 10
+	requiredVotes     = 1
+	initialUserRating = 10
 )
 
-var alreadyVotedError = errors.New("Уже проголосовали!")
+var alreadyVotedError = errors.New("уже проголосовали")
 
 func init() {
 	db, err := db.InitDB("./db/database.db")
+	db.SetMaxOpenConns(1)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -96,21 +97,33 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		case update.Message.IsCommand():
 			switch update.Message.Command() {
 			case "start":
-				keyButton := tgbotapi.NewKeyboardButton(keyButtonText)
-				aboutButton := tgbotapi.NewKeyboardButton(aboutButtonText)
-				buttons := []tgbotapi.KeyboardButton{keyButton, aboutButton}
-				keyboard := tgbotapi.NewReplyKeyboard(buttons)
+				addKeyButton := tgbotapi.NewKeyboardButton(addKeyButtonText)
+				removeKeyButton := tgbotapi.NewKeyboardButton(removeKeyButtonText)
+				firstButtonRow := []tgbotapi.KeyboardButton{addKeyButton, removeKeyButton}
+				keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow)
 				msg.ReplyMarkup = keyboard
-				msg.Text = fmt.Sprintf("Привет, %s!", update.Message.From.FirstName)
+				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
+					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
+					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\""+
+					", после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
+					"По любым вопросам пиши моему хозяину — @babin",
+					update.Message.From.FirstName)
+				forgetLogin(userID)
 			}
-		case update.Message.Text == keyButtonText:
-			msg.Text = "Введите логин на Голосе"
-			setWaitLogin(update.Message.From.ID)
-		case update.Message.Text == aboutButtonText:
-			msg.Text = "Бот для блого-социальной сети на блокчейне \"Голос\"\n" +
-				"Нет времени голосовать, но хочется зарабатывать? Добавьте приватный постинг ключ и мы распорядимся вашей Силой голоса наилучшим образом!\n" +
-				"Автор: @babin"
-			forgetLogin(update.Message.From.ID)
+		case update.Message.Text == addKeyButtonText:
+			msg.Text = "Введи логин на Голосе"
+			setWaitLogin(userID)
+		case update.Message.Text == removeKeyButtonText:
+			credential, err := models.GetCredentialByUserID(userID, database)
+			msg.Text = "Произошла ошибка при удалении ключа"
+			if err == nil {
+				credential.PostingKey = ""
+				result, err := credential.Save(database)
+				if result && err == nil {
+					msg.Text = "Твой ключ успешно удалён. Я больше не буду отвечать на твои предложения по курированию постов."
+				}
+			}
+			forgetLogin(userID)
 		case regexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
@@ -152,21 +165,24 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				return nil
 			}
 			msg.Text = "Не понимаю"
-			if wait, login := isWaitingKey(update.Message.From.ID); wait {
+			if wait, login := isWaitingKey(userID); wait {
 				if login == "" {
 					msg.Text = "Введите приватный ключ"
-					setWaitKey(update.Message.From.ID, update.Message.Text)
+					setWaitKey(userID, update.Message.Text)
 				} else {
 					credential := models.Credential{
-						UserID:     update.Message.From.ID,
+						UserID:     userID,
 						UserName:   login,
 						PostingKey: update.Message.Text,
-						Rating:     initialRating,
+						Rating:     initialUserRating,
+					}
+					if rating, err := credential.GetRating(database); err == nil {
+						credential.Rating = rating
 					}
 
 					golos := client.NewApi([]string{rpc}, chain)
 					defer golos.Rpc.Close()
-					if ok, _ := golos.Rpc.Login.Login(credential.UserName, credential.PostingKey); ok {
+					if golos.Login(credential.UserName, credential.PostingKey) {
 						result, err := credential.Save(database)
 						if err != nil {
 							log.Println(err.Error())
@@ -181,7 +197,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 						msg.Text = "Логин и приватный ключ не совпадают :("
 					}
 
-					forgetLogin(update.Message.From.ID)
+					forgetLogin(userID)
 				}
 			}
 		}
@@ -224,9 +240,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		return nil
 	}
 	if msg.Text != "" {
+		msg.ParseMode = "Markdown"
+		msg.DisableWebPagePreview = true
 		bot.Send(msg)
 	} else {
-		return errors.New("Отсутствует текст сообщения")
+		return errors.New("отсутствует текст сообщения")
 	}
 	return nil
 }
