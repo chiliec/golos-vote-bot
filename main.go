@@ -132,11 +132,17 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				break
 			}
 
+			credential, err := models.GetCredentialByUserID(userID, database)
+			if err != nil || len(credential.PostingKey) == 0 {
+				msg.Text = "Не могу допустить тебя к кураторству, меня ещё нет твоего постинг-ключа. Напиши мне в личку, обсудим этот вопрос"
+				break
+			}
+
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[2], matched[3]
 
 			percent := 5
-			if update.Message.Chat.ID == groupID {
+			if chatID == groupID {
 				percent = 100
 			}
 
