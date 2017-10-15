@@ -167,8 +167,9 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			msg.Text = "Не понимаю"
 			if wait, login := isWaitingKey(userID); wait {
 				if login == "" {
+					login = strings.Trim(update.Message.Text, "@")
+					setWaitKey(userID, login)
 					msg.Text = "Введите приватный ключ"
-					setWaitKey(userID, update.Message.Text)
 				} else {
 					credential := models.Credential{
 						UserID:     userID,
