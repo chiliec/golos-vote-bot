@@ -97,6 +97,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		case update.Message.IsCommand():
 			switch update.Message.Command() {
 			case "start":
+				if update.Message.Chat.Type != "private" {
+					msg.Text = "Я такое только в личке буду обсуждать"
+					break
+				}
 				addKeyButton := tgbotapi.NewKeyboardButton(addKeyButtonText)
 				removeKeyButton := tgbotapi.NewKeyboardButton(removeKeyButtonText)
 				firstButtonRow := []tgbotapi.KeyboardButton{addKeyButton, removeKeyButton}
@@ -111,9 +115,17 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				forgetLogin(userID)
 			}
 		case update.Message.Text == addKeyButtonText:
+			if update.Message.Chat.Type != "private" {
+				msg.Text = "Я такое только в личке буду обсуждать"
+				break
+			}
 			msg.Text = "Введи логин на Голосе"
 			setWaitLogin(userID)
 		case update.Message.Text == removeKeyButtonText:
+			if update.Message.Chat.Type != "private" {
+				msg.Text = "Я такое только в личке буду обсуждать"
+				break
+			}
 			credential, err := models.GetCredentialByUserID(userID, database)
 			msg.Text = "Произошла ошибка при удалении ключа"
 			if err == nil {
@@ -134,7 +146,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 
 			credential, err := models.GetCredentialByUserID(userID, database)
 			if err != nil || len(credential.PostingKey) == 0 {
-				msg.Text = "Не могу допустить тебя к кураторству, меня ещё нет твоего постинг-ключа. Напиши мне в личку, обсудим этот вопрос"
+				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего постинг-ключа. Напиши мне в личку, обсудим этот вопрос"
 				break
 			}
 
