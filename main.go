@@ -89,7 +89,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 	}
 	msg := tgbotapi.NewMessage(chatID, "")
 	if update.Message != nil {
-		regexp, err := regexp.Compile("https://golos.io/([-a-zA-Z0-9@:%_+.~#?&//=]{2,256})/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
+		golosRegexp, err := regexp.Compile("https://golos.io/[-a-zA-Z0-9@:%_+.~#?&//=]{2,256}/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
+		if err != nil {
+			return err
+		}
+		goldRegexp, err := regexp.Compile("https://goldvoice.club/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})/")
 		if err != nil {
 			return err
 		}
@@ -136,7 +140,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				}
 			}
 			forgetLogin(userID)
-		case regexp.MatchString(update.Message.Text):
+		case golosRegexp.MatchString(update.Message.Text) || goldRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
 			if update.Message.Chat.Type == "private" {
@@ -150,8 +154,16 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				break
 			}
 
-			matched := regexp.FindStringSubmatch(update.Message.Text)
-			author, permalink := matched[2], matched[3]
+			var author, permalink string
+			if golosRegexp.MatchString(update.Message.Text) {
+				matched := golosRegexp.FindStringSubmatch(update.Message.Text)
+				author, permalink = matched[1], matched[2]
+			} else if goldRegexp.MatchString(update.Message.Text) {
+				matched := goldRegexp.FindStringSubmatch(update.Message.Text)
+				author, permalink = matched[1], matched[2]
+			} else {
+				return errors.New("ссылка не распознана")
+			}
 
 			percent := 5
 			if chatID == groupID {
