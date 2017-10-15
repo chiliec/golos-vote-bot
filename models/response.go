@@ -28,10 +28,7 @@ func (response Response) Exists(db *sql.DB) bool {
 		response.UserID, response.VoteID)
 	var id *int
 	row.Scan(&id)
-	if id != nil {
-		return true
-	}
-	return false
+	return id != nil
 }
 
 func GetAllResponsesForVoteID(voteID int64, db *sql.DB) (responses []Response, err error) {

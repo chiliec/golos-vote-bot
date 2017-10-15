@@ -33,7 +33,7 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	requiredVotes     = 1
+	requiredVotes     = 2
 	initialUserRating = 10
 )
 
@@ -223,20 +223,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			VoteID: voteID,
 			Result: isGood,
 		}
-		var text string
-		if response.Exists(database) {
-			text = "Вы уже голосовали!"
-		} else {
-			_, err := response.Save(database)
-			if err != nil {
-				return err
-			}
+		text := "Вы уже голосовали!"
+		responseExists := response.Exists(database)
+		if !responseExists {
 			text = "Голос принят"
-			voteModel := models.GetVote(database, voteID)
-			err = verifyVotes(bot, voteModel, update)
-			if err != nil {
-				return err
-			}
 		}
 		config := tgbotapi.CallbackConfig{
 			CallbackQueryID: update.CallbackQuery.ID,
@@ -244,15 +234,26 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			ShowAlert:       true,
 		}
 		bot.AnswerCallbackQuery(config)
+
+		if !responseExists {
+			_, err := response.Save(database)
+			if err != nil {
+				return err
+			}
+			voteModel := models.GetVote(database, voteID)
+			err = verifyVotes(bot, voteModel, update)
+			if err != nil {
+				return err
+			}
+		}
 		return nil
 	}
-	if msg.Text != "" {
-		msg.ParseMode = "Markdown"
-		msg.DisableWebPagePreview = true
-		bot.Send(msg)
-	} else {
+	if msg.Text == "" {
 		return errors.New("отсутствует текст сообщения")
 	}
+	msg.ParseMode = "Markdown"
+	msg.DisableWebPagePreview = true
+	bot.Send(msg)
 	return nil
 }
 
@@ -402,7 +403,7 @@ func getChatID(update tgbotapi.Update) (int64, error) {
 	} else if update.CallbackQuery != nil {
 		return update.CallbackQuery.Message.Chat.ID, nil
 	} else {
-		return 0, errors.New("Не получили ID чата")
+		return 0, errors.New("не получили ID чата")
 	}
 }
 
@@ -410,9 +411,9 @@ func getUserID(update tgbotapi.Update) (int, error) {
 	if update.Message != nil {
 		return update.Message.From.ID, nil
 	} else if update.CallbackQuery != nil {
-		return update.CallbackQuery.Message.From.ID, nil
+		return update.CallbackQuery.From.ID, nil
 	} else {
-		return 0, errors.New("Не получили ID пользователя")
+		return 0, errors.New("не получили ID пользователя")
 	}
 }
 
@@ -422,6 +423,6 @@ func getMessageID(update tgbotapi.Update) (int, error) {
 	} else if update.CallbackQuery != nil {
 		return update.CallbackQuery.Message.MessageID, nil
 	} else {
-		return 0, errors.New("Не получили ID сообщения")
+		return 0, errors.New("не получили ID сообщения")
 	}
 }
