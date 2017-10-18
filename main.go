@@ -52,7 +52,7 @@ func init() {
 func main() {
 	token := os.Getenv("TELEGRAM_TOKEN")
 	if token == "" {
-		log.Panic(errors.New("Нет токена"))
+		log.Panic(errors.New("нет токена"))
 	}
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
@@ -153,7 +153,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
 
-			percent := 5
+			percent := 10
 			if chatID == groupID {
 				percent = 100
 			}
@@ -175,7 +175,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				return err
 			}
 
-			msg.Text = "Голосование открыто"
+			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
+			msg.Text = "Голосование за пост открыто"
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 		default:
