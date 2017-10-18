@@ -89,11 +89,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 	}
 	msg := tgbotapi.NewMessage(chatID, "")
 	if update.Message != nil {
-		golosRegexp, err := regexp.Compile("https://golos.io/[-a-zA-Z0-9@:%_+.~#?&//=]{2,256}/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
-		if err != nil {
-			return err
-		}
-		goldRegexp, err := regexp.Compile("https://goldvoice.club/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})/")
+		regexp, err := regexp.Compile("https://(?:[golos.io|goldvoice.club])(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
 		if err != nil {
 			return err
 		}
@@ -140,7 +136,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				}
 			}
 			forgetLogin(userID)
-		case golosRegexp.MatchString(update.Message.Text) || goldRegexp.MatchString(update.Message.Text):
+		case regexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
 			if update.Message.Chat.Type == "private" {
@@ -154,16 +150,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				break
 			}
 
-			var author, permalink string
-			if golosRegexp.MatchString(update.Message.Text) {
-				matched := golosRegexp.FindStringSubmatch(update.Message.Text)
-				author, permalink = matched[1], matched[2]
-			} else if goldRegexp.MatchString(update.Message.Text) {
-				matched := goldRegexp.FindStringSubmatch(update.Message.Text)
-				author, permalink = matched[1], matched[2]
-			} else {
-				return errors.New("ссылка не распознана")
-			}
+			matched := regexp.FindStringSubmatch(update.Message.Text)
+			author, permalink := matched[1], matched[2]
 
 			percent := 5
 			if chatID == groupID {
@@ -411,8 +399,8 @@ func vote(vote models.Vote) int {
 
 func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
 	stringVoteID := strconv.FormatInt(voteID, 10)
-	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Хороший пост ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
-	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Плохой пост ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
+	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Хороший ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
+	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Плохой ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
 	buttons := []tgbotapi.InlineKeyboardButton{}
 	buttons = append(buttons, goodButton)
 	row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}
