@@ -14,8 +14,8 @@ import (
 	"github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
-	"github.com/Chiliec/golos-vote-bot/db"
-	"github.com/Chiliec/golos-vote-bot/models"
+	"github.com/GolosTools/golos-vote-bot/db"
+	"github.com/GolosTools/golos-vote-bot/models"
 )
 
 var (
@@ -33,7 +33,7 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	requiredVotes     = 2
+	requiredVotes     = 3
 	initialUserRating = 10
 )
 
