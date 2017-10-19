@@ -92,6 +92,18 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 5)
+		fallthrough
+	case 5:
+		query := `
+		ALTER TABLE votes ADD COLUMN completed BOOLEAN NOT NULL CHECK (completed IN (0,1)) DEFAULT 1;
+		CREATE UNIQUE INDEX idx_author_permalink ON votes(author, permalink);
+		`
+		_, err := tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 6)
 		//fallthrough
 	}
 	tx.Commit()

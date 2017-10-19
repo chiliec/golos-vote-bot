@@ -244,7 +244,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		config := tgbotapi.CallbackConfig{
 			CallbackQueryID: update.CallbackQuery.ID,
 			Text:            text,
-			ShowAlert:       true,
+			ShowAlert:       false,
 		}
 		bot.AnswerCallbackQuery(config)
 
@@ -336,9 +336,14 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
 			credential.IncrementRating(database)
-
+			if voteModel.Completed {
+				return nil
+			}
+			voteModel.Completed = true
+			result, err := voteModel.Save(database)
+			log.Printf("result: %s, err: %v", result, err)
 			successVotes := vote(voteModel)
-			msg.Text = fmt.Sprintf("Проголосовал с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
+			msg.Text = fmt.Sprintf("Проголосовала с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
 			credential.DecrementRating(database)
 			rating, err := credential.GetRating(database)
@@ -347,6 +352,7 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 			}
 			msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
 			if rating < 0 {
+				// TODO: проверить себя на возможность банить людей
 				memberConfig := tgbotapi.KickChatMemberConfig{
 					ChatMemberConfig: tgbotapi.ChatMemberConfig{
 						ChatID: chatID,
@@ -400,8 +406,8 @@ func vote(vote models.Vote) int {
 
 func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
 	stringVoteID := strconv.FormatInt(voteID, 10)
-	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Хороший ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
-	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Плохой ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
+	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Лайк ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
+	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Дизлайк ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
 	buttons := []tgbotapi.InlineKeyboardButton{}
 	buttons = append(buttons, goodButton)
 	row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}

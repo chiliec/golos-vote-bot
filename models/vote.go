@@ -10,26 +10,28 @@ type Vote struct {
 	Author    string
 	Permalink string
 	Percent   int
+	Completed bool
 }
 
 func GetVote(db *sql.DB, voteID int64) Vote {
 	var vote Vote
-	row := db.QueryRow("SELECT id, user_id, author, permalink, percent FROM votes WHERE id = ?", voteID)
-	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent)
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed FROM votes WHERE id = ?", voteID)
+	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed)
 	return vote
 }
 
 func (vote Vote) Save(db *sql.DB) (int64, error) {
-	prepare, err := db.Prepare("INSERT INTO votes(" +
+	prepare, err := db.Prepare("INSERT OR REPLACE INTO votes(" +
 		"user_id," +
 		"author," +
 		"permalink," +
-		"percent) " +
-		"values(?, ?, ?, ?)")
+		"percent," +
+		"completed) " +
+		"values(?, ?, ?, ?, ?)")
 	if err != nil {
 		return 0, err
 	}
-	result, err := prepare.Exec(vote.UserID, vote.Author, vote.Permalink, vote.Percent)
+	result, err := prepare.Exec(vote.UserID, vote.Author, vote.Permalink, vote.Percent, vote.Completed)
 	if err != nil {
 		return 0, err
 	}
