@@ -89,7 +89,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 	}
 	msg := tgbotapi.NewMessage(chatID, "")
 	if update.Message != nil {
-		regexp, err := regexp.Compile("https://(?:[golos.io|goldvoice.club])(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~#?&=]{2,256})")
+		regexp, err := regexp.Compile("https://(?:[golos.io|goldvoice.club])(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
 		if err != nil {
 			return err
 		}
