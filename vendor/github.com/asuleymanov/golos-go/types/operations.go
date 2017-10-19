@@ -44,6 +44,15 @@ func (op *ConvertOperation) Data() interface{} {
 	return op
 }
 
+func (op *ConvertOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeConvert.Code()))
+	enc.Encode(op.Owner)
+	enc.Encode(op.RequestID)
+	enc.EncodeMoney(op.Amount)
+	return enc.Err()
+}
+
 // FC_REFLECT( steemit::chain::feed_publish_operation,
 //             (publisher)
 //             (exchange_rate) )
@@ -64,15 +73,6 @@ func (op *FeedPublishOperation) Type() OpType {
 
 func (op *FeedPublishOperation) Data() interface{} {
 	return op
-}
-
-func (op *FeedPublishOperation) MarshalTransaction(encoder *transaction.Encoder) error {
-	enc := transaction.NewRollingEncoder(encoder)
-	enc.EncodeUVarint(uint64(TypeTransfer.Code()))
-	enc.Encode(op.Publisher)
-	enc.EncodeMoney(op.ExchangeRate.Quote)
-	enc.EncodeMoney(op.ExchangeRate.Base)
-	return enc.Err()
 }
 
 // FC_REFLECT( steemit::chain::pow,
@@ -226,6 +226,15 @@ func (op *TransferToVestingOperation) Data() interface{} {
 	return op
 }
 
+func (op *TransferToVestingOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeTransferToVesting.Code()))
+	enc.Encode(op.From)
+	enc.Encode(op.To)
+	enc.EncodeMoney(op.Amount)
+	return enc.Err()
+}
+
 // FC_REFLECT( steemit::chain::withdraw_vesting_operation,
 //             (account)
 //             (vesting_shares) )
@@ -241,6 +250,14 @@ func (op *WithdrawVestingOperation) Type() OpType {
 
 func (op *WithdrawVestingOperation) Data() interface{} {
 	return op
+}
+
+func (op *WithdrawVestingOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeWithdrawVesting.Code()))
+	enc.Encode(op.Account)
+	enc.EncodeMoney(op.VestingShares)
+	return enc.Err()
 }
 
 // FC_REFLECT( steemit::chain::set_withdraw_vesting_route_operation,
@@ -291,6 +308,14 @@ func (op *AccountWitnessProxyOperation) Type() OpType {
 
 func (op *AccountWitnessProxyOperation) Data() interface{} {
 	return op
+}
+
+func (op *AccountWitnessProxyOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeAccountWitnessProxy.Code()))
+	enc.Encode(op.Account)
+	enc.Encode(op.Proxy)
+	return enc.Err()
 }
 
 // FC_REFLECT( steemit::chain::comment_operation,
@@ -406,6 +431,18 @@ func (op *LimitOrderCreateOperation) Data() interface{} {
 	return op
 }
 
+func (op *LimitOrderCreateOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeLimitOrderCreate.Code()))
+	enc.Encode(op.Owner)
+	enc.Encode(op.OrderID)
+	enc.EncodeMoney(op.AmountToSell)
+	enc.EncodeMoney(op.MinToReceive)
+	enc.EncodeBool(op.FillOrKill)
+	enc.Encode(op.Expiration)
+	return enc.Err()
+}
+
 // FC_REFLECT( steemit::chain::limit_order_cancel_operation,
 //             (owner)
 //             (orderid) )
@@ -421,6 +458,14 @@ func (op *LimitOrderCancelOperation) Type() OpType {
 
 func (op *LimitOrderCancelOperation) Data() interface{} {
 	return op
+}
+
+func (op *LimitOrderCancelOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeLimitOrderCancel.Code()))
+	enc.Encode(op.Owner)
+	enc.Encode(op.OrderID)
+	return enc.Err()
 }
 
 // FC_REFLECT( steemit::chain::delete_comment_operation,
@@ -529,17 +574,6 @@ func (op *WitnessUpdateOperation) Data() interface{} {
 	return op
 }
 
-func (op *WitnessUpdateOperation) MarshalTransaction(encoder *transaction.Encoder) error {
-	enc := transaction.NewRollingEncoder(encoder)
-	enc.EncodeUVarint(uint64(TypeTransfer.Code()))
-	enc.Encode(op.Owner)
-	enc.Encode(op.Url)
-	enc.Encode(op.BlockSigningKey)
-	enc.Encode(op.Props)
-	enc.Encode(op.Fee)
-	return enc.Err()
-}
-
 type CustomOperation struct {
 	RequiredAuths []string `json:"required_auths"`
 	Id            uint16   `json:"id"`
@@ -567,6 +601,16 @@ func (op *SetWithdrawVestingRouteOperation) Type() OpType {
 
 func (op *SetWithdrawVestingRouteOperation) Data() interface{} {
 	return op
+}
+
+func (op *SetWithdrawVestingRouteOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeSetWithdrawVestingRoute.Code()))
+	enc.Encode(op.FromAccount)
+	enc.Encode(op.ToAccount)
+	enc.Encode(op.Percent)
+	enc.EncodeBool(op.AutoVest)
+	return enc.Err()
 }
 
 type LimitOrderCreate2Operation struct {
@@ -616,7 +660,7 @@ func (op *ProveAuthorityOperation) Data() interface{} {
 type RequestAccountRecoveryOperation struct {
 	RecoveryAccount   string        `json:"recovery_account"`
 	AccountToRecover  string        `json:"account_to_recover"`
-	NewOwnerAuthority string        `json:"new_owner_authority"`
+	NewOwnerAuthority []interface{} `json:"new_owner_authority"`
 	Extensions        []interface{} `json:"extensions"`
 }
 
@@ -655,6 +699,15 @@ func (op *ChangeRecoveryAccountOperation) Type() OpType {
 
 func (op *ChangeRecoveryAccountOperation) Data() interface{} {
 	return op
+}
+
+func (op *ChangeRecoveryAccountOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeChangeRecoveryAccount.Code()))
+	enc.Encode(op.AccountToRecover)
+	enc.Encode(op.NewRecoveryAccount)
+	enc.Encode(byte(0))
+	return enc.Err()
 }
 
 type EscrowTransferOperation struct {
@@ -790,6 +843,17 @@ func (op *TransferFromSavingsOperation) Data() interface{} {
 	return op
 }
 
+func (op *TransferFromSavingsOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeTransferFromSavings.Code()))
+	enc.Encode(op.From)
+	enc.Encode(op.RequestId)
+	enc.Encode(op.To)
+	enc.EncodeMoney(op.Amount)
+	enc.Encode(op.Memo)
+	return enc.Err()
+}
+
 type CancelTransferFromSavingsOperation struct {
 	From      string `json:"from"`
 	RequestId uint32 `json:"request_id"`
@@ -801,6 +865,14 @@ func (op *CancelTransferFromSavingsOperation) Type() OpType {
 
 func (op *CancelTransferFromSavingsOperation) Data() interface{} {
 	return op
+}
+
+func (op *CancelTransferFromSavingsOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeCancelTransferFromSavings.Code()))
+	enc.Encode(op.From)
+	enc.Encode(op.RequestId)
+	return enc.Err()
 }
 
 type CustomBinaryOperation struct {
@@ -831,6 +903,14 @@ func (op *DeclineVotingRightsOperation) Type() OpType {
 
 func (op *DeclineVotingRightsOperation) Data() interface{} {
 	return op
+}
+
+func (op *DeclineVotingRightsOperation) MarshalTransaction(encoder *transaction.Encoder) error {
+	enc := transaction.NewRollingEncoder(encoder)
+	enc.EncodeUVarint(uint64(TypeDeclineVotingRights.Code()))
+	enc.Encode(op.Account)
+	enc.EncodeBool(op.Decline)
+	return enc.Err()
 }
 
 type ResetAccountOperation struct {
@@ -890,7 +970,7 @@ func (op *DelegateVestingSharesOperation) Data() interface{} {
 	return op
 }
 
-type AccountCreateWithSelegationOperation struct {
+type AccountCreateWithDelegationOperation struct {
 	Fee            string        `json:"fee"`
 	Delegation     string        `json:"delegation"`
 	Creator        string        `json:"creator"`
@@ -903,11 +983,11 @@ type AccountCreateWithSelegationOperation struct {
 	Extensions     []interface{} `json:"extensions"`
 }
 
-func (op *AccountCreateWithSelegationOperation) Type() OpType {
-	return TypeAccountCreateWithSelegation
+func (op *AccountCreateWithDelegationOperation) Type() OpType {
+	return TypeAccountCreateWithDelegation
 }
 
-func (op *AccountCreateWithSelegationOperation) Data() interface{} {
+func (op *AccountCreateWithDelegationOperation) Data() interface{} {
 	return op
 }
 

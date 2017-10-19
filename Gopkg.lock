@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/asuleymanov/golos-go"
   packages = [".","apis/database","apis/follow","apis/login","apis/market","apis/networkbroadcast","client","encoding/transaction","encoding/wif","interfaces","internal/rpc","rfc6979","transactions","translit","transports/websocket","types"]
-  revision = "779100548728b0b78b0635e6b3ffc2fd51151147"
+  revision = "103bb0eb85e569cf78519ccdc8f2f7ca06528203"
 
 [[projects]]
   branch = "master"
@@ -23,7 +23,7 @@
   branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
-  revision = "4803a8291c92a1d2d41041b942a9a9e37deab065"
+  revision = "fb43a179cb37713cb19f93c9b62d436385edbc87"
 
 [[projects]]
   name = "github.com/go-kit/kit"
@@ -40,8 +40,8 @@
 [[projects]]
   name = "github.com/go-playground/locales"
   packages = [".","currency"]
-  revision = "b860c92274dfb72f517b8b4c11c6d9f2f8cc9d91"
-  version = "v0.11.1"
+  revision = "e4cbcb5d0652150d40ad0646651076b6bd2be4f6"
+  version = "v0.11.2"
 
 [[projects]]
   name = "github.com/go-playground/universal-translator"
@@ -119,13 +119,13 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["nacl/secretbox","openpgp/armor","openpgp/errors","poly1305","ripemd160","salsa20/salsa"]
-  revision = "9419663f5a44be8b34ca85f08abc5fe1be11f8a3"
+  revision = "541b9d50ad47e36efd8fb423e938e59ff1691f68"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "a04bdaca5b32abe1c069418fb7088ae607de5bd0"
+  revision = "aabf50738bcdd9b207582cbe796b59ed65d56680"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"

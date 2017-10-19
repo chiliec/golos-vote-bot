@@ -17,7 +17,6 @@ addons:
   ssh_known_hosts: ${DEPLOY_HOST}
 
 before_script:
-  - go vet -v ./...
   - go test -v ./...
 
 script:

@@ -50,6 +50,7 @@ func signBufferSha256(buf_sha256 []byte, private_key *ecdsa.PrivateKey) []byte {
 	nonce := 0
 
 	for {
+		//Debug info
 		//log.Println("before call SignECDSA", "msg_sha=", hex.EncodeToString(buf_sha256_clone), "nonce=", nonce) // "msg=", hex.EncodeToString(msg),
 		r, s, err := rfc6979.SignECDSA(private_key, buf_sha256_clone, sha256.New, nonce)
 		//nonce = nonce.Add(nonce, big.NewInt(1))
