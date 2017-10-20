@@ -89,7 +89,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 	}
 	msg := tgbotapi.NewMessage(chatID, "")
 	if update.Message != nil {
-		regexp, err := regexp.Compile("https://(?:[golos.io|goldvoice.club])(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
+		regexp, err := regexp.Compile("https://(?:golos.io|goldvoice.club)(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
 		if err != nil {
 			return err
 		}
@@ -108,8 +108,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				msg.ReplyMarkup = keyboard
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
 					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
-					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\""+
-					", после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
+					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\", "+
+					"после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
 					"По любым вопросам пиши моему хозяину — @babin",
 					update.Message.From.FirstName)
 				forgetLogin(userID)
@@ -146,12 +146,19 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 
 			credential, err := models.GetCredentialByUserID(userID, database)
 			if err != nil || len(credential.PostingKey) == 0 {
-				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего постинг-ключа. Напиши мне в личку, обсудим этот вопрос"
+				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего постинг-ключа. " +
+					"Напиши мне в личку, обсудим этот вопрос"
 				break
 			}
 
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
+
+			golos := client.NewApi([]string{rpc}, chain)
+			defer golos.Rpc.Close()
+			if !golos.Verify_Post(author, permalink) {
+				return nil
+			}
 
 			if strings.HasPrefix(author, "vp-") {
 				msg.Text = "Сообщества vox-populi могут себя поддержать сами"
