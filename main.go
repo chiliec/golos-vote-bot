@@ -153,6 +153,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
 
+			if strings.HasPrefix(author, "vp-") {
+				msg.Text = "Сообщества vox-populi могут себя поддержать сами"
+				break
+			}
+
 			percent := 10
 			if chatID == groupID {
 				percent = 100
