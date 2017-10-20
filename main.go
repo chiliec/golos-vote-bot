@@ -33,7 +33,7 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	requiredVotes     = 3
+	requiredVotes     = 2
 	initialUserRating = 10
 )
 
@@ -107,7 +107,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow)
 				msg.ReplyMarkup = keyboard
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
-					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
+					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n" +
+					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
 					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\", "+
 					"после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
 					"По любым вопросам пиши моему хозяину — @babin",
@@ -200,7 +201,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				if login == "" {
 					login = strings.Trim(update.Message.Text, "@")
 					setWaitKey(userID, login)
-					msg.Text = "Введите приватный ключ"
+					msg.Text = "А теперь приватный ПОСТИНГ-ключ.\n" +
+						"Его можно найти в разделе \"Кошелек\", вкладка \"Разрешения\".\n" +
+						"Нажать кнопку \"Показать приватный ключ\".\n" +
+						"Он должен начинаться с цифры 5."
 				} else {
 					credential := models.Credential{
 						UserID:     userID,
