@@ -157,12 +157,29 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 
 			golos := client.NewApi([]string{rpc}, chain)
 			defer golos.Rpc.Close()
-			if !golos.Verify_Post(author, permalink) {
+
+			post, err := golos.Rpc.Database.GetContent(author, permalink)
+			if err != nil {
+				return err
+			}
+
+			// check post exists in blockchain
+			if post.Author != author || post.Permlink != permalink {
 				return nil
 			}
 
+			if post.Mode != "first_payout" {
+				msg.Text = "Выплата за пост уже была произведена!"
+				break
+			}
+
+			if post.MaxAcceptedPayout == "0.000 GBG" {
+				msg.Text = "Мне не интересно голосовать за пост с отключенными выплатами"
+				break
+			}
+
 			if strings.HasPrefix(author, "vp-") {
-				msg.Text = "Сообщества vox-populi могут себя поддержать сами"
+				msg.Text = "Сообщества vox-populi могут сами себя поддержать"
 				break
 			}
 
