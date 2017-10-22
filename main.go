@@ -27,8 +27,8 @@ const (
 	rpc   = "wss://ws.golos.io"
 	chain = "golos"
 
-	addKeyButtonText    = "🗝 Добавить ключ"
-	removeKeyButtonText = "❌ Удалить ключ"
+	addKeyButtonText    = "🗝Добавить ключ"
+	removeKeyButtonText = "❌Удалить ключ"
 
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
@@ -441,9 +441,7 @@ func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKe
 	stringVoteID := strconv.FormatInt(voteID, 10)
 	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Лайк ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
 	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Дизлайк ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
-	buttons := []tgbotapi.InlineKeyboardButton{}
-	buttons = append(buttons, goodButton)
-	row := []tgbotapi.InlineKeyboardButton{goodButton, badButton}
+	row := []tgbotapi.InlineKeyboardButton{badButton, goodButton}
 	markup := tgbotapi.InlineKeyboardMarkup{}
 	markup.InlineKeyboard = append(markup.InlineKeyboard, row)
 	return markup
