@@ -13,8 +13,7 @@ type Vote struct {
 	Completed bool
 }
 
-func GetVote(db *sql.DB, voteID int64) Vote {
-	var vote Vote
+func GetVote(db *sql.DB, voteID int64) (vote Vote) {
 	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed FROM votes WHERE id = ?", voteID)
 	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed)
 	return vote

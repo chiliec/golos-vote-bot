@@ -41,7 +41,6 @@ var alreadyVotedError = errors.New("уже проголосовали")
 
 func init() {
 	db, err := db.InitDB("./db/database.db")
-	db.SetMaxOpenConns(1)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -263,6 +262,21 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		if err != nil {
 			return err
 		}
+
+		voteModel := models.GetVote(database, voteID)
+		if voteModel.Completed {
+			return nil
+		}
+		if voteModel.UserID == userID {
+			config := tgbotapi.CallbackConfig{
+				CallbackQueryID: update.CallbackQuery.ID,
+				Text:            "Нельзя голосовать за свой же пост!",
+				ShowAlert:       false,
+			}
+			bot.AnswerCallbackQuery(config)
+			return nil
+		}
+
 		isGood := action == "good"
 		response := models.Response{
 			UserID: userID,
