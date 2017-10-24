@@ -255,7 +255,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			}
 		}
 	} else if update.CallbackQuery != nil {
-		log.Println(update.CallbackQuery.Message)
 		arr := strings.Split(update.CallbackQuery.Data, "_")
 		voteStringID := arr[0]
 		action := arr[1]
@@ -272,7 +271,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
 				Text:            "Нельзя голосовать за свой же пост!",
-				ShowAlert:       false,
 			}
 			bot.AnswerCallbackQuery(config)
 			return nil
@@ -289,10 +287,25 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		if !responseExists {
 			text = "Голос принят"
 		}
+
+		credential := models.Credential{UserID: userID}
+		rating, err := credential.GetRating(database)
+		if err != nil {
+			return err
+		}
+		if rating <= requiredVotes {
+			text = "Слишком мало рейтинга для голосования, предлагайте посты"
+			config := tgbotapi.CallbackConfig{
+				CallbackQueryID: update.CallbackQuery.ID,
+				Text:            text,
+			}
+			bot.AnswerCallbackQuery(config)
+			return nil
+		}
+
 		config := tgbotapi.CallbackConfig{
 			CallbackQueryID: update.CallbackQuery.ID,
 			Text:            text,
-			ShowAlert:       false,
 		}
 		bot.AnswerCallbackQuery(config)
 
@@ -305,6 +318,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			err = verifyVotes(bot, voteModel, update)
 			if err != nil {
 				return err
+			}
+			// уменьшаем рейтинг голосовавшего при отрциательном голосовании
+			if !response.Result {
+				credential.DecrementRating(database, 1)
 			}
 		}
 		return nil
@@ -383,7 +400,7 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 	if positives+negatives >= requiredVotes {
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
-			credential.IncrementRating(database)
+			credential.IncrementRating(database, 1)
 			if voteModel.Completed {
 				return nil
 			}
@@ -393,14 +410,13 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 			successVotes := vote(voteModel)
 			msg.Text = fmt.Sprintf("Проголосовала с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
-			credential.DecrementRating(database)
+			credential.DecrementRating(database, 2 * requiredVotes)
 			rating, err := credential.GetRating(database)
 			if err != nil {
 				return err
 			}
 			msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
 			if rating < 0 {
-				// TODO: проверить себя на возможность банить людей
 				memberConfig := tgbotapi.KickChatMemberConfig{
 					ChatMemberConfig: tgbotapi.ChatMemberConfig{
 						ChatID: chatID,
@@ -408,8 +424,13 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 					},
 					UntilDate: 0,
 				}
-				bot.KickChatMember(memberConfig)
-				msg.Text = "Пост отклонен, предлагающий исключен"
+				_, err := bot.KickChatMember(memberConfig)
+				if err != nil {
+					log.Println(err)
+					msg.Text = "Пост отклонен, предлагающий должен быть исключен"
+				} else {
+					msg.Text = "Пост отклонен, предлагающий исключен"
+				}
 			}
 		}
 		_, err := bot.Send(msg)

@@ -40,13 +40,13 @@ func (credential Credential) Exists(db *sql.DB) bool {
 	return false
 }
 
-func (credential Credential) IncrementRating(db *sql.DB) error {
-	_, err := db.Exec("UPDATE credentials SET rating = rating + 1 WHERE user_id = ?", credential.UserID)
+func (credential Credential) IncrementRating(db *sql.DB, rating int) error {
+	_, err := db.Exec("UPDATE credentials SET rating = rating + ? WHERE user_id = ?", rating, credential.UserID)
 	return err
 }
 
-func (credential Credential) DecrementRating(db *sql.DB) error {
-	_, err := db.Exec("UPDATE credentials SET rating = rating - 1 WHERE user_id = ?", credential.UserID)
+func (credential Credential) DecrementRating(db *sql.DB, rating int) error {
+	_, err := db.Exec("UPDATE credentials SET rating = rating - ? WHERE user_id = ?", rating, credential.UserID)
 	return err
 }
 
