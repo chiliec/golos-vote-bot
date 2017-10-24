@@ -16,6 +16,7 @@ import (
 
 	"github.com/GolosTools/golos-vote-bot/db"
 	"github.com/GolosTools/golos-vote-bot/models"
+	"github.com/GolosTools/golos-vote-bot/helpers"
 )
 
 var (
@@ -177,7 +178,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				break
 			}
 
-			if strings.HasPrefix(author, "vp-") {
+			if helpers.IsVoxPopuli(author) {
 				msg.Text = "Сообщества vox-populi могут сами себя поддержать"
 				break
 			}
@@ -195,7 +196,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			}
 
 			if voteModel.Exists(database) {
-				msg.Text = "Уже голосовал за этот пост!"
+				msg.Text = "Уже голосовала за этот пост!"
 				break
 			}
 
