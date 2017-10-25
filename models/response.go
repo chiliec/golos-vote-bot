@@ -31,6 +31,12 @@ func (response Response) Exists(db *sql.DB) bool {
 	return id != nil
 }
 
+func GetLastResponse(db *sql.DB) (response Response) {
+	row := db.QueryRow("SELECT user_id, vote_id, result FROM responses ORDER BY ID DESC LIMIT 1")
+	row.Scan(&response.UserID, &response.VoteID, &response.Result)
+	return response
+}
+
 func GetAllResponsesForVoteID(voteID int64, db *sql.DB) (responses []Response, err error) {
 	rows, err := db.Query("SELECT user_id, vote_id, result FROM responses WHERE vote_id = ?", voteID)
 	if err != nil {

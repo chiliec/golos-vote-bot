@@ -46,3 +46,9 @@ func (vote Vote) Exists(db *sql.DB) bool {
 	}
 	return false
 }
+
+func GetOpenedVotesCount(db *sql.DB) (count int) {
+	row := db.QueryRow("SELECT COUNT(*) FROM votes WHERE completed = 0")
+	row.Scan(&count)
+	return count
+}

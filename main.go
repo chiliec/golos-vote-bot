@@ -15,8 +15,8 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
 	"github.com/GolosTools/golos-vote-bot/db"
-	"github.com/GolosTools/golos-vote-bot/models"
 	"github.com/GolosTools/golos-vote-bot/helpers"
+	"github.com/GolosTools/golos-vote-bot/models"
 )
 
 var (
@@ -34,8 +34,9 @@ const (
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
 
-	requiredVotes     = 2
-	initialUserRating = 10
+	requiredVotes      = 2
+	initialUserRating  = 10
+	maximumOpenedVotes = 3
 )
 
 var alreadyVotedError = errors.New("уже проголосовали")
@@ -107,7 +108,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 				keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow)
 				msg.ReplyMarkup = keyboard
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
-					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n" +
+					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
 					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
 					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\", "+
 					"после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
@@ -141,13 +142,28 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 			msg.ReplyToMessageID = update.Message.MessageID
 
 			if update.Message.Chat.Type == "private" {
-				msg.Text = "Присоединяйтесь к нашей группе: " + groupLink
+				msg.Text = "Предложить пост можно в нашей группе " + groupLink
+				break
+			}
+
+			if update.Message.Chat.ID != groupID {
+				msg.Text = "Я здесь не работаю. Пиши в личку, подскажу где мы качественные посты поддерживаем"
+				break
+			}
+
+			openedVotes := models.GetOpenedVotesCount(database)
+			log.Println(openedVotes)
+			if openedVotes >= maximumOpenedVotes {
+				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся?"
 				break
 			}
 
 			credential, err := models.GetCredentialByUserID(userID, database)
-			if err != nil || len(credential.PostingKey) == 0 {
-				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего постинг-ключа. " +
+			if err != nil {
+				return err
+			}
+			if len(credential.PostingKey) == 0 {
+				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего ключа. " +
 					"Напиши мне в личку, обсудим этот вопрос"
 				break
 			}
@@ -238,12 +254,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 					if golos.Login(credential.UserName, credential.PostingKey) {
 						result, err := credential.Save(database)
 						if err != nil {
-							log.Println(err.Error())
+							return err
 						}
 						if result {
 							msg.Text = "Логин и приватный ключ успешно сохранён! " +
 								"Присоединяйтесь к нашей группе для участия в курировании: " + groupLink
 						} else {
+							log.Printf("Не сохранился приватный ключ: %#v", credential)
 							msg.Text = "Не смог сохранить логин и приватный ключ :("
 						}
 					} else {
@@ -261,6 +278,15 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) error {
 		voteID, err := strconv.ParseInt(voteStringID, 10, 64)
 		if err != nil {
 			return err
+		}
+
+		if models.GetLastResponse(database).UserID == userID {
+			config := tgbotapi.CallbackConfig{
+				CallbackQueryID: update.CallbackQuery.ID,
+				Text:            "Нельзя так часто голосовать",
+			}
+			bot.AnswerCallbackQuery(config)
+			return nil
 		}
 
 		voteModel := models.GetVote(database, voteID)
@@ -410,21 +436,14 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 			successVotes := vote(voteModel)
 			msg.Text = fmt.Sprintf("Проголосовала с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
-			credential.DecrementRating(database, 2 * requiredVotes)
+			credential.DecrementRating(database, 2*requiredVotes)
 			rating, err := credential.GetRating(database)
 			if err != nil {
 				return err
 			}
 			msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
 			if rating < 0 {
-				memberConfig := tgbotapi.KickChatMemberConfig{
-					ChatMemberConfig: tgbotapi.ChatMemberConfig{
-						ChatID: chatID,
-						UserID: userID,
-					},
-					UntilDate: 0,
-				}
-				_, err := bot.KickChatMember(memberConfig)
+				err = removeUser(bot, chatID, userID)
 				if err != nil {
 					log.Println(err)
 					msg.Text = "Пост отклонен, предлагающий должен быть исключен"
@@ -439,6 +458,18 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 		}
 	}
 	return nil
+}
+
+func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
+	memberConfig := tgbotapi.KickChatMemberConfig{
+		ChatMemberConfig: tgbotapi.ChatMemberConfig{
+			ChatID: chatID,
+			UserID: userID,
+		},
+		UntilDate: 0,
+	}
+	_, err := bot.KickChatMember(memberConfig)
+	return err
 }
 
 func vote(vote models.Vote) int {
