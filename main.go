@@ -451,6 +451,20 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 					msg.Text = "Пост отклонен, предлагающий исключен"
 				}
 			}
+			// восстанавливаем рейтинг кураторам
+			for _, response := range responses {
+				// которые отклонили пост
+				if false == response.Result {
+					credential, err := models.GetCredentialByUserID(response.UserID, database)
+					if err != nil {
+						return err
+					}
+					err = credential.IncrementRating(database, 1)
+					if err != nil {
+						return err
+					}
+				}
+			}
 		}
 		_, err := bot.Send(msg)
 		if err != nil {
