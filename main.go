@@ -424,15 +424,17 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 	credential := models.Credential{UserID: userID}
 
 	if positives+negatives >= requiredVotes {
+		if voteModel.Completed {
+			return nil
+		}
+		voteModel.Completed = true
+		_, err := voteModel.Save(database)
+		if err != nil {
+			return err
+		}
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
 			credential.IncrementRating(database, 1)
-			if voteModel.Completed {
-				return nil
-			}
-			voteModel.Completed = true
-			result, err := voteModel.Save(database)
-			log.Printf("result: %s, err: %v", result, err)
 			successVotes := vote(voteModel)
 			msg.Text = fmt.Sprintf("Проголосовала с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
@@ -466,7 +468,7 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 				}
 			}
 		}
-		_, err := bot.Send(msg)
+		_, err = bot.Send(msg)
 		if err != nil {
 			return err
 		}
