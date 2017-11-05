@@ -104,6 +104,21 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 6)
+		fallthrough
+	case 6:
+		// нельзя дефолтное динамическое значение через ALTER добавить :(
+		query := `
+		ALTER TABLE votes ADD COLUMN date DATETIME;
+		ALTER TABLE responses ADD COLUMN date DATETIME;
+		UPDATE votes SET date = (DATETIME('now'));
+		UPDATE responses SET date = (DATETIME('now'));
+		`
+		_, err := tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 7)
 		//fallthrough
 	}
 	tx.Commit()
