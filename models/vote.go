@@ -61,3 +61,9 @@ func GetTodayVotesCountForUserID(userID int, db *sql.DB) (count int) {
 	row.Scan(&count)
 	return count
 }
+
+func GetLastVote(db *sql.DB) (vote Vote) {
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes ORDER BY ID DESC LIMIT 1")
+	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+	return vote
+}

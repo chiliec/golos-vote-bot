@@ -151,6 +151,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 				break
 			}
 
+			if models.GetLastVote(database).UserID == userID {
+				msg.Text = "Нельзя предлагать два поста подряд. Наберись терпения!"
+				break
+			}
+
 			if update.Message.Chat.ID != groupID {
 				msg.Text = "Я здесь не работаю. Пиши в личку, подскажу где мы качественные посты поддерживаем"
 				break
