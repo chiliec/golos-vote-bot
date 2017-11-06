@@ -26,6 +26,7 @@ const (
 
 	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
 	groupID   = -1001143551951
+	developer = "@babin"
 
 	requiredVotes             = 2
 	initialUserRating         = 10
@@ -112,8 +113,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
 					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\", "+
 					"после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
-					"По любым вопросам пиши моему хозяину — @babin",
-					update.Message.From.FirstName)
+					"По любым вопросам пиши моему хозяину — %s",
+					update.Message.From.FirstName, developer)
 				forgetLogin(userID)
 			}
 		case update.Message.Text == addKeyButtonText:
@@ -141,6 +142,27 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 		case regexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
+			matched := regexp.FindStringSubmatch(update.Message.Text)
+			author, permalink := matched[1], matched[2]
+
+			golos := client.NewApi(rpc, chain)
+			defer golos.Rpc.Close()
+			post, err := golos.Rpc.Database.GetContent(author, permalink)
+			if err != nil {
+				return err
+			}
+			// check post exists in blockchain
+			if post.Author != author || post.Permlink != permalink {
+				return nil
+			}
+
+			if update.Message.Chat.ID != groupID {
+				msg.Text = "Удобный просмотр с мобильных устройств:\n" + getInstantViewLink(author, permalink)
+				msg.DisableWebPagePreview = false
+				bot.Send(msg)
+				return nil
+			}
+
 			if update.Message.Chat.Type == "private" {
 				msg.Text = "Предложить пост можно в нашей группе " + groupLink
 				break
@@ -153,11 +175,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 
 			if models.GetLastVote(database).UserID == userID {
 				msg.Text = "Нельзя предлагать два поста подряд. Наберись терпения!"
-				break
-			}
-
-			if update.Message.Chat.ID != groupID {
-				msg.Text = "Я здесь не работаю. Пиши в личку, подскажу где мы качественные посты поддерживаем"
 				break
 			}
 
@@ -174,22 +191,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего ключа. " +
 					"Напиши мне в личку, обсудим этот вопрос"
 				break
-			}
-
-			matched := regexp.FindStringSubmatch(update.Message.Text)
-			author, permalink := matched[1], matched[2]
-
-			golos := client.NewApi(rpc, chain)
-			defer golos.Rpc.Close()
-
-			post, err := golos.Rpc.Database.GetContent(author, permalink)
-			if err != nil {
-				return err
-			}
-
-			// check post exists in blockchain
-			if post.Author != author || post.Permlink != permalink {
-				return nil
 			}
 
 			if post.Mode != "first_payout" {
@@ -231,9 +232,12 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 			}
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
-			msg.Text = "Голосование за пост открыто"
+			msg.Text = "Голосование за пост открыто\n" + getInstantViewLink(author, permalink)
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
+			msg.DisableWebPagePreview = false
+			bot.Send(msg)
+			return nil
 		default:
 			if update.Message.Chat.Type != "private" {
 				return nil
@@ -568,4 +572,8 @@ func getMessageID(update tgbotapi.Update) (int, error) {
 	} else {
 		return 0, errors.New("не получили ID сообщения")
 	}
+}
+
+func getInstantViewLink(author string, permalink string) string {
+	return "https://t.me/iv?url=https://goldvoice.club/" + "@" + author + "/" + permalink + "&rhash=70f46c6616076d"
 }
