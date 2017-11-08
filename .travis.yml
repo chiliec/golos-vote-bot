@@ -3,7 +3,10 @@ language: go
 go:
   - 1.9
 
-sudo: false
+sudo: required
+
+services:
+  - docker
 
 env:
   global:
@@ -11,20 +14,20 @@ env:
     - DOCKER_USER=chiliec
     - DOCKER_IMAGE_NAME=golos-vote-bot
 
+before_install:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+
 script:
   - go test -v ./...
+  - ./coverage.sh
+  - GOOS=linux go build -a --ldflags '-extldflags "-static"' -o bin/golos-vote-bot -i .
+  - docker build -t $DOCKER_USER/$DOCKER_IMAGE_NAME:latest -f Dockerfile .
 
-deploy:
-  provider: script
-  script:
-    - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-    - chmod +x ./cc-test-reporter
-    - ./cc-test-reporter before-build
-    - ./coverage.sh
-    - GOOS=linux go build -a --ldflags '-extldflags "-static"' -o bin/golos-vote-bot -i .
-    - docker build -t $DOCKER_USER/$DOCKER_IMAGE_NAME:latest -f Dockerfile .
-    - docker login -u $DOCKER_USER -p $DOCKER_PASS
-    - docker push $DOCKER_USER/$DOCKER_IMAGE_NAME
-    - ./cc-test-reporter after-build
-  on:
-    branch: master
+after_success:
+  - ./cc-test-reporter after-build
+  - if [ "$TRAVIS_BRANCH" == "master" ]; then
+      docker login -u "$DOCKER_USER" -p "$DOCKER_PASS";
+      docker push $DOCKER_USER/$DOCKER_IMAGE_NAME;
+    fi
