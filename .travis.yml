@@ -20,7 +20,7 @@ before_deploy:
   - ./cc-test-reporter before-build
   - ./coverage.sh
   - GOOS=linux go build -a --ldflags '-extldflags "-static"' -o bin/golos-vote-bot -i .
-  - docker build -t $REPO:latest -f Dockerfile .
+  - docker build -t $DOCKER_USER/$DOCKER_IMAGE_NAME:latest -f Dockerfile .
   - ./cc-test-reporter after-build
 
 deploy:
