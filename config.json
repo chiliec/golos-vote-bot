@@ -1,0 +1,12 @@
+{
+  "telegramToken": "write-your-telegram-token-here",
+  "requiredVotes": 2,
+  "initialUserRating": 10,
+  "maximumOpenedVotes": 3,
+  "maximumUserVotesPerDay": 4,
+  "developer": "@babin",
+  "groupID": -1001143551951,
+  "groupLink": "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
+  "chain": "golos",
+  "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"]
+}

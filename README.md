@@ -5,3 +5,24 @@
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/GolosTools/golos-vote-bot/master/LICENSE)
 
 Бот для коллективного кураторства на Голосе.
+
+## Запуск
+
+#### Шаг 1
+Форкните репозиторий и склонируйте его себе через `go get`
+
+#### Шаг 2
+Скопируйте стандартный конфиг с новым именем `config.local.json`: 
+```bash
+cp config.json config.local.json
+```
+и измените нужные параметры в нём.
+
+#### Шаг 3
+Выполните:
+```bash
+go run main.go
+```
+
+#### Шаг 4
+**Profit!**

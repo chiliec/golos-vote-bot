@@ -15,3 +15,6 @@
 .idea
 database.db
 bin/*
+
+# Local config file
+config.local.json

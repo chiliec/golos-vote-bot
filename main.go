@@ -15,6 +15,7 @@ import (
 	"github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 
+	"github.com/GolosTools/golos-vote-bot/config"
 	"github.com/GolosTools/golos-vote-bot/db"
 	"github.com/GolosTools/golos-vote-bot/helpers"
 	"github.com/GolosTools/golos-vote-bot/models"
@@ -23,40 +24,28 @@ import (
 const (
 	addKeyButtonText    = "🗝Добавить ключ"
 	removeKeyButtonText = "❌Удалить ключ"
-
-	groupLink = "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q"
-	groupID   = -1001143551951
-	developer = "@babin"
-
-	requiredVotes             = 2
-	initialUserRating         = 10
-	maximumOpenedVotes        = 3
-	maximumVotesForUserPerDay = 4
 )
 
-var (
-	logins            = map[int]string{}
-	alreadyVotedError = errors.New("уже проголосовали")
-
-	rpc = []string{
-		"wss://ws.golos.io",
-		"wss://api.golos.cf",
-	}
-	chain = "golos"
-)
+var logins = map[int]string{}
 
 func main() {
+	var configuration config.Config
+	err := config.LoadConfiguration("./config.json", &configuration)
+	if err != nil {
+		log.Panic(err)
+	}
+	err = config.LoadConfiguration("./config.local.json", &configuration)
+	if err != nil && !os.IsNotExist(err) {
+		log.Panic(err)
+	}
+
 	database, err := db.InitDB("./db/database.db")
 	if err != nil {
 		log.Panic(err)
 	}
 	defer database.Close()
 
-	token := os.Getenv("TELEGRAM_TOKEN")
-	if token == "" {
-		log.Panic(errors.New("нет токена"))
-	}
-	bot, err := tgbotapi.NewBotAPI(token)
+	bot, err := tgbotapi.NewBotAPI(configuration.TelegramToken)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -73,14 +62,14 @@ func main() {
 		log.Panic(err)
 	}
 	for update := range updates {
-		err := processMessage(bot, update, database)
+		err := processMessage(bot, update, configuration, database)
 		if err != nil {
 			log.Println(err)
 		}
 	}
 }
 
-func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.DB) error {
+func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.Config, database *sql.DB) error {
 	chatID, err := getChatID(update)
 	if err != nil {
 		return err
@@ -114,7 +103,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\", "+
 					"после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
 					"По любым вопросам пиши моему хозяину — %s",
-					update.Message.From.FirstName, developer)
+					update.Message.From.FirstName, config.Developer)
 				forgetLogin(userID)
 			}
 		case update.Message.Text == addKeyButtonText:
@@ -145,7 +134,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 			matched := regexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
 
-			golos := client.NewApi(rpc, chain)
+			golos := client.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			post, err := golos.Rpc.Database.GetContent(author, permalink)
 			if err != nil {
@@ -156,7 +145,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 				return nil
 			}
 
-			if update.Message.Chat.ID != groupID {
+			if update.Message.Chat.ID != config.GroupID {
 				msg.Text = "Удобный просмотр с мобильных устройств:\n" + getInstantViewLink(author, permalink)
 				msg.DisableWebPagePreview = false
 				bot.Send(msg)
@@ -164,11 +153,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 			}
 
 			if update.Message.Chat.Type == "private" {
-				msg.Text = "Предложить пост можно в нашей группе " + groupLink
+				msg.Text = "Предложить пост можно в нашей группе " + config.GroupLink
 				break
 			}
 
-			if models.GetTodayVotesCountForUserID(userID, database) >= maximumVotesForUserPerDay {
+			if models.GetTodayVotesCountForUserID(userID, database) >= config.MaximumUserVotesPerDay {
 				msg.Text = "Лимит твоих постов на сегодня превышен. Приходи завтра!"
 				break
 			}
@@ -178,7 +167,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 				break
 			}
 
-			if models.GetOpenedVotesCount(database) >= maximumOpenedVotes {
+			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
 				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся?"
 				break
 			}
@@ -209,7 +198,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 			}
 
 			percent := 10
-			if chatID == groupID {
+			if chatID == config.GroupID {
 				percent = 100
 			}
 
@@ -256,13 +245,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 						UserID:     userID,
 						UserName:   login,
 						PostingKey: update.Message.Text,
-						Rating:     initialUserRating,
+						Rating:     config.InitialUserRating,
 					}
 					if rating, err := credential.GetRating(database); err == nil {
 						credential.Rating = rating
 					}
 
-					golos := client.NewApi(rpc, chain)
+					golos := client.NewApi(config.Rpc, config.Chain)
 					defer golos.Rpc.Close()
 					if golos.Login(credential.UserName, credential.PostingKey) {
 						result, err := credential.Save(database)
@@ -271,7 +260,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 						}
 						if result {
 							msg.Text = "Логин и приватный ключ успешно сохранён! " +
-								"Присоединяйтесь к нашей группе для участия в курировании: " + groupLink
+								"Присоединяйтесь к нашей группе для участия в курировании: " + config.GroupLink
 						} else {
 							log.Printf("Не сохранился приватный ключ: %#v", credential)
 							msg.Text = "Не смог сохранить логин и приватный ключ :("
@@ -333,7 +322,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 		if err != nil {
 			return err
 		}
-		if rating <= requiredVotes {
+		if rating <= config.RequiredVotes {
 			text = "Слишком мало рейтинга для голосования, предлагайте посты"
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
@@ -343,11 +332,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 			return nil
 		}
 
-		config := tgbotapi.CallbackConfig{
+		callbackConfig := tgbotapi.CallbackConfig{
 			CallbackQueryID: update.CallbackQuery.ID,
 			Text:            text,
 		}
-		bot.AnswerCallbackQuery(config)
+		bot.AnswerCallbackQuery(callbackConfig)
 
 		if !responseExists {
 			_, err := response.Save(database)
@@ -355,7 +344,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, database *sql.
 				return err
 			}
 			voteModel := models.GetVote(database, voteID)
-			err = verifyVotes(bot, voteModel, update, database)
+			err = verifyVotes(bot, voteModel, update, config, database)
 			if err != nil {
 				return err
 			}
@@ -396,7 +385,7 @@ func isWaitingKey(userID int) (bool, string) {
 	return false, ""
 }
 
-func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Update, database *sql.DB) error {
+func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Update, config config.Config, database *sql.DB) error {
 	chatID, err := getChatID(update)
 	if err != nil {
 		return err
@@ -437,7 +426,7 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 
 	credential := models.Credential{UserID: userID}
 
-	if positives+negatives >= requiredVotes {
+	if positives+negatives >= config.RequiredVotes {
 		if voteModel.Completed {
 			return nil
 		}
@@ -449,10 +438,10 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
 			credential.IncrementRating(database, 1)
-			successVotes := vote(voteModel, database)
+			successVotes := vote(voteModel, config, database)
 			msg.Text = fmt.Sprintf("Проголосовала с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
-			credential.DecrementRating(database, 2*requiredVotes)
+			credential.DecrementRating(database, 2*config.RequiredVotes)
 			rating, err := credential.GetRating(database)
 			if err != nil {
 				return err
@@ -502,7 +491,7 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 	return err
 }
 
-func vote(vote models.Vote, database *sql.DB) int {
+func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 	credentials, err := models.GetAllCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
@@ -521,7 +510,7 @@ func vote(vote models.Vote, database *sql.DB) int {
 		go func(credential models.Credential) {
 			defer wg.Done()
 			weight := vote.Percent * 100
-			golos := client.NewApi(rpc, chain)
+			golos := client.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
