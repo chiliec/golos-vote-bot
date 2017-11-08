@@ -14,19 +14,17 @@ env:
 script:
   - go test -v ./...
 
-before_deploy:
-  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
-  - chmod +x ./cc-test-reporter
-  - ./cc-test-reporter before-build
-  - ./coverage.sh
-  - GOOS=linux go build -a --ldflags '-extldflags "-static"' -o bin/golos-vote-bot -i .
-  - docker build -t $DOCKER_USER/$DOCKER_IMAGE_NAME:latest -f Dockerfile .
-  - ./cc-test-reporter after-build
-
 deploy:
   provider: script
   script:
+    - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+    - chmod +x ./cc-test-reporter
+    - ./cc-test-reporter before-build
+    - ./coverage.sh
+    - GOOS=linux go build -a --ldflags '-extldflags "-static"' -o bin/golos-vote-bot -i .
+    - docker build -t $DOCKER_USER/$DOCKER_IMAGE_NAME:latest -f Dockerfile .
     - docker login -u $DOCKER_USER -p $DOCKER_PASS
     - docker push $DOCKER_USER/$DOCKER_IMAGE_NAME
+    - ./cc-test-reporter after-build
   on:
     branch: master
