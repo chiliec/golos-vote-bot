@@ -4,6 +4,7 @@ import (
 	// Stdlib
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	// Vendor
@@ -16,11 +17,38 @@ import (
 	"github.com/asuleymanov/golos-go/types"
 )
 
+func (api *Client) SteemPerMvest() (float64, error) {
+	dgp, errdgp := api.Rpc.Database.GetDynamicGlobalProperties()
+	if errdgp != nil {
+		return 0, errdgp
+	}
+
+	tvfs, errtvfs := strconv.ParseFloat(strings.Split(dgp.TotalVersingFundSteem, " ")[0], 64)
+	if errtvfs != nil {
+		return 0, errtvfs
+	}
+
+	tvs, errtvs := strconv.ParseFloat(strings.Split(dgp.TotalVestingShares, " ")[0], 64)
+	if errtvs != nil {
+		return 0, errtvs
+	}
+
+	spmtmp := (tvfs / tvs) * 1000000
+	str := strconv.FormatFloat(spmtmp, 'f', 3, 64)
+
+	spm, errspm := strconv.ParseFloat(str, 64)
+	if errspm != nil {
+		return 0, errspm
+	}
+
+	return spm, nil
+}
+
 func (api *Client) Vote(user_name, author_name, permlink string, weight int) error {
 	if weight > 10000 {
 		weight = 10000
 	}
-	if api.Verify_Voter(author_name, permlink, user_name) {
+	if api.Verify_Voter_Weight(author_name, permlink, user_name, weight) {
 		return errors.New("The voter is on the list")
 	}
 	tx := &types.VoteOperation{
@@ -77,7 +105,7 @@ func (api *Client) Comment_Vote(user_name, author_name, ppermlink, body string, 
 	}
 	trx = append(trx, txc)
 
-	if !api.Verify_Voter(author_name, permlink, user_name) {
+	if !api.Verify_Voter_Weight(author_name, permlink, user_name, weight_post) {
 		txv := &types.VoteOperation{
 			Voter:    user_name,
 			Author:   author_name,
@@ -138,7 +166,7 @@ func (api *Client) Post(author_name, title, body, permlink, ptag, post_image str
 		}
 	}
 	if post_image != "" {
-		json_meta = json_meta + ",\"image\":\"" + post_image + "\""
+		json_meta = json_meta + ",\"image\":[\"" + post_image + "\"]"
 	}
 	json_meta = json_meta + ",\"app\":\"golos-go(go-steem)\"}"
 
@@ -186,7 +214,7 @@ func (api *Client) Post_Vote(author_name, title, body, permlink, ptag, post_imag
 		}
 	}
 	if post_image != "" {
-		json_meta = json_meta + ",\"image\":\"" + post_image + "\""
+		json_meta = json_meta + ",\"image\":[\"" + post_image + "\"]"
 	}
 	json_meta = json_meta + ",\"app\":\"golos-go(go-steem)\"}"
 
@@ -231,10 +259,11 @@ func (api *Client) Post_Options(author_name, title, body, permlink, ptag, post_i
 	} else {
 		ptag = translit.EncodeTag(ptag)
 	}
-	MAP := "1000000.000 GBG"
+	symbol := "GBG"
+	MAP := "1000000.000 " + symbol
 	PSD := percent
 	if percent == 0 {
-		MAP = "0.000 GBG"
+		MAP = "0.000 " + symbol
 	} else if percent == 50 {
 		PSD = 10000
 	} else {
@@ -250,7 +279,7 @@ func (api *Client) Post_Options(author_name, title, body, permlink, ptag, post_i
 		}
 	}
 	if post_image != "" {
-		json_meta = json_meta + ",\"image\":\"" + post_image + "\""
+		json_meta = json_meta + ",\"image\":[\"" + post_image + "\"]"
 	}
 	json_meta = json_meta + ",\"app\":\"golos-go(go-steem)\"}"
 
@@ -301,10 +330,11 @@ func (api *Client) Post_Options_Vote(author_name, title, body, permlink, ptag, p
 	} else {
 		ptag = translit.EncodeTag(ptag)
 	}
-	MAP := "1000000.000 GBG"
+	symbol := "GBG"
+	MAP := "1000000.000 " + symbol
 	PSD := percent
 	if percent == 0 {
-		MAP = "0.000 GBG"
+		MAP = "0.000 " + symbol
 	} else if percent == 50 {
 		PSD = 10000
 	} else {
@@ -320,7 +350,7 @@ func (api *Client) Post_Options_Vote(author_name, title, body, permlink, ptag, p
 		}
 	}
 	if post_image != "" {
-		json_meta = json_meta + ",\"image\":\"" + post_image + "\""
+		json_meta = json_meta + ",\"image\":[\"" + post_image + "\"]"
 	}
 	json_meta = json_meta + ",\"app\":\"golos-go(go-steem)\"}"
 
@@ -715,6 +745,24 @@ func (api *Client) DeclineVotingRights(account string, decline bool) error {
 		return errors.Wrapf(err, "Error DeclineVotingRights: ")
 	} else {
 		log.Println("[DeclineVotingRights] Block -> ", resp.BlockNum, " DeclineVotingRights user -> ", account)
+		return nil
+	}
+}
+
+func (api *Client) FeedPublish(publisher, base, quote string) error {
+	tx := &types.FeedPublishOperation{
+		Publisher: publisher,
+		ExchangeRate: types.ExchRate{
+			Base:  base,
+			Quote: quote,
+		},
+	}
+
+	resp, err := api.Send_Trx(publisher, tx)
+	if err != nil {
+		return errors.Wrapf(err, "Error FeedPublish: ")
+	} else {
+		log.Println("[FeedPublish] Block -> ", resp.BlockNum, " FeedPublish user -> ", publisher)
 		return nil
 	}
 }

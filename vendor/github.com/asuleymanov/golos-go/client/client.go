@@ -54,10 +54,10 @@ func initChainId(str string) *transactions.Chain {
 	var ChainId transactions.Chain
 	// Определяем ChainId
 	switch str {
-	case "steem":
-		ChainId = *transactions.SteemChain
 	case "golos":
 		ChainId = *transactions.GolosChain
+	case "test":
+		ChainId = *transactions.TestChain
 	}
 	return &ChainId
 }

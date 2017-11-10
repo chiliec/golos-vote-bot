@@ -56,7 +56,7 @@ type Config struct {
 	SteemitHardforkRequiredWitnesses      *types.Int `json:"STEEMIT_HARDFORK_REQUIRED_WITNESSES"`
 	SteemitInitMinerName                  string     `json:"STEEMIT_INIT_MINER_NAME"`
 	SteemitInitPublicKeyStr               string     `json:"STEEMIT_INIT_PUBLIC_KEY_STR"`
-	SteemitInitSupply                     string     `json:"STEEMIT_INIT_SUPPLY"`
+	SteemitInitSupply                     *types.Int `json:"STEEMIT_INIT_SUPPLY"`
 	SteemitInitTime                       string     `json:"STEEMIT_INIT_TIME"`
 	SteemitIrreversibleThreshold          *types.Int `json:"STEEMIT_IRREVERSIBLE_THRESHOLD"`
 	SteemitLiquidityAprPercent            *types.Int `json:"STEEMIT_LIQUIDITY_APR_PERCENT"`
@@ -70,7 +70,7 @@ type Config struct {
 	SteemitMaxBlockSize                   *types.Int `json:"STEEMIT_MAX_BLOCK_SIZE"`
 	SteemitMaxCashoutWindowSeconds        *types.Int `json:"STEEMIT_MAX_CASHOUT_WINDOW_SECONDS"`
 	SteemitMaxCommentDepth                *types.Int `json:"STEEMIT_MAX_COMMENT_DEPTH"`
-	SteemitMaxFeedAge                     string     `json:"STEEMIT_MAX_FEED_AGE"`
+	SteemitMaxFeedAge                     *types.Int `json:"STEEMIT_MAX_FEED_AGE"`
 	SteemitMaxInstanceId                  string     `json:"STEEMIT_MAX_INSTANCE_ID"`
 	SteemitMaxMemoSize                    *types.Int `json:"STEEMIT_MAX_MEMO_SIZE"`
 	SteemitMaxWitnesses                   *types.Int `json:"STEEMIT_MAX_WITNESSES"`
@@ -272,7 +272,7 @@ type VoteState struct {
 	Voter   string      `json:"voter"`
 	Weight  *types.Int  `json:"weight"`
 	Rshares *types.Int  `json:"rshares"`
-	Percent *types.Int  `json:"percent"`
+	Percent int         `json:"percent"`
 	Time    *types.Time `json:"time"`
 }
 
@@ -411,7 +411,7 @@ type Account struct {
 	NewAverageBandwidth           string        `json:"new_average_bandwidth"`
 	NewAverageMarketBandwidth     *types.Int64  `json:"new_average_market_bandwidth"`
 	VestingBalance                string        `json:"vesting_balance"`
-	Reputation                    string        `json:"reputation"`
+	Reputation                    *types.Int64  `json:"reputation"`
 	TransferHistory               []interface{} `json:"transfer_history"`
 	MarketHistory                 []interface{} `json:"market_history"`
 	PostHistory                   []interface{} `json:"post_history"`
