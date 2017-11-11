@@ -26,8 +26,6 @@ const (
 	removeKeyButtonText = "❌Удалить ключ"
 )
 
-var logins = map[int]string{}
-
 func main() {
 	var configuration config.Config
 	err := config.LoadConfiguration("./config.json", &configuration)
@@ -39,7 +37,7 @@ func main() {
 		log.Panic(err)
 	}
 
-	database, err := db.InitDB("./db/database.db")
+	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
 		log.Panic(err)
 	}
@@ -79,6 +77,12 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 		return err
 	}
 	msg := tgbotapi.NewMessage(chatID, "")
+
+	state, err := models.GetStateByUserID(userID, database)
+	if err != nil {
+		return err
+	}
+
 	if update.Message != nil {
 		regexp, err := regexp.Compile("https://(?:golos.io|goldvoice.club)(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
 		if err != nil {
@@ -100,34 +104,44 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
 					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
 					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
-					"Предлагаю начать с добавления приватного постинг-ключа нажатием кнопки \""+addKeyButtonText+"\", "+
-					"после чего я дам ссылку на группу куда предлагать посты для поддержки.\n\n"+
+					"Предлагаю начать с добавления ключа нажатием кнопки \""+addKeyButtonText+"\", "+
+					"после чего я дам ссылку на группу для предложения постов.\n\n"+
 					"По любым вопросам пиши моему хозяину — %s",
 					update.Message.From.FirstName, config.Developer)
-				forgetLogin(userID)
+
 			}
+			state.Action = update.Message.Command()
 		case update.Message.Text == addKeyButtonText:
 			if update.Message.Chat.Type != "private" {
 				msg.Text = "Я такое только в личке буду обсуждать"
 				break
 			}
-			msg.Text = "Введи логин на Голосе"
-			setWaitLogin(userID)
+			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golos.cf/multi/, "+
+				"а затем скажи мне свой логин на Голосе", config.Account)
+			state.Action = addKeyButtonText
 		case update.Message.Text == removeKeyButtonText:
 			if update.Message.Chat.Type != "private" {
 				msg.Text = "Я такое только в личке буду обсуждать"
 				break
 			}
-			credential, err := models.GetCredentialByUserID(userID, database)
 			msg.Text = "Произошла ошибка при удалении ключа"
+			credential, err := models.GetCredentialByUserID(userID, database)
 			if err == nil {
-				credential.PostingKey = ""
+				if len(credential.UserName) == 0 || false == credential.Active {
+					msg.Text = "У тебя ещё нет моего ключа. " +
+						"Жми кнопку " + addKeyButtonText + "для добавления или используй команду " +
+						"/start для обновления списка кнопок."
+					break
+				}
+				credential.Active = false
 				result, err := credential.Save(database)
-				if result && err == nil {
-					msg.Text = "Твой ключ успешно удалён. Я больше не буду отвечать на твои предложения по курированию постов."
+				if true == result && err == nil {
+					msg.Text = "Успех. Я больше не буду использовать твой аккаунт при курировании постов. " +
+						"Дополнительно можешь удалить все сторонние ключи из своего аккаунта здесь: " +
+						"https://golos.cf/multi/off.html"
 				}
 			}
-			forgetLogin(userID)
+			state.Action = removeKeyButtonText
 		case regexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
@@ -176,8 +190,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			if err != nil {
 				return err
 			}
-			if len(credential.PostingKey) == 0 {
-				msg.Text = "Не могу допустить тебя к кураторству, у меня ещё нет твоего ключа. " +
+			if false == credential.Active {
+				msg.Text = "Не могу допустить тебя к кураторству, у тебя ещё нет моего ключа. " +
 					"Напиши мне в личку, обсудим этот вопрос"
 				break
 			}
@@ -197,10 +211,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				break
 			}
 
-			percent := 10
-			if chatID == config.GroupID {
-				percent = 100
-			}
+			percent := 100
 
 			voteModel := models.Vote{
 				UserID:    userID,
@@ -221,62 +232,53 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
+
 			msg.Text = "Голосование за пост открыто\n" + getInstantViewLink(author, permalink)
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 			msg.DisableWebPagePreview = false
-			bot.Send(msg)
+			_, err = bot.Send(msg)
+			if err != nil {
+				return err
+			}
 			return nil
+		case state.Action == addKeyButtonText:
+			login := update.Message.Text
+			credential := models.Credential{
+				UserID:   userID,
+				UserName: login,
+				Rating:   config.InitialUserRating,
+			}
+			if rating, err := credential.GetRating(database); err == nil {
+				credential.Rating = rating
+			}
+
+			golos := client.NewApi(config.Rpc, config.Chain)
+			defer golos.Rpc.Close()
+			if golos.Login(credential.UserName, config.PostingKey) {
+				result, err := credential.Save(database)
+				if err != nil {
+					return err
+				}
+				if result {
+					msg.Text = "Логин и приватный ключ успешно сохранён! " +
+						"Присоединяйтесь к нашей группе для участия в курировании: " + config.GroupLink
+				} else {
+					log.Printf("Не сохранился приватный ключ: %#v", credential)
+					msg.Text = "Не смог сохранить логин и приватный ключ :("
+				}
+			} else {
+				msg.Text = "Мой публичный ключик ещё не добавлен в твой аккаунт."
+			}
 		default:
 			if update.Message.Chat.Type != "private" {
 				return nil
 			}
 			msg.Text = "Не понимаю"
-			if wait, login := isWaitingKey(userID); wait {
-				if login == "" {
-					login = strings.Trim(update.Message.Text, "@")
-					setWaitKey(userID, login)
-					msg.Text = "А теперь приватный ПОСТИНГ-ключ.\n" +
-						"Его можно найти в разделе \"Кошелек\", вкладка \"Разрешения\".\n" +
-						"Нажать кнопку \"Показать приватный ключ\".\n" +
-						"Он должен начинаться с цифры 5."
-				} else {
-					credential := models.Credential{
-						UserID:     userID,
-						UserName:   login,
-						PostingKey: update.Message.Text,
-						Rating:     config.InitialUserRating,
-					}
-					if rating, err := credential.GetRating(database); err == nil {
-						credential.Rating = rating
-					}
-
-					golos := client.NewApi(config.Rpc, config.Chain)
-					defer golos.Rpc.Close()
-					if golos.Login(credential.UserName, credential.PostingKey) {
-						result, err := credential.Save(database)
-						if err != nil {
-							return err
-						}
-						if result {
-							msg.Text = "Логин и приватный ключ успешно сохранён! " +
-								"Присоединяйтесь к нашей группе для участия в курировании: " + config.GroupLink
-						} else {
-							log.Printf("Не сохранился приватный ключ: %#v", credential)
-							msg.Text = "Не смог сохранить логин и приватный ключ :("
-						}
-					} else {
-						msg.Text = "Логин и приватный ключ не совпадают :("
-					}
-
-					forgetLogin(userID)
-				}
-			}
 		}
 	} else if update.CallbackQuery != nil {
 		arr := strings.Split(update.CallbackQuery.Data, "_")
-		voteStringID := arr[0]
-		action := arr[1]
+		voteStringID, action := arr[0], arr[1]
 		voteID, err := strconv.ParseInt(voteStringID, 10, 64)
 		if err != nil {
 			return err
@@ -355,34 +357,23 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 		}
 		return nil
 	}
+
+	_, err = state.Save(database)
+	if err != nil {
+		return err
+	}
+	log.Printf("%v", state)
+
 	if msg.Text == "" {
 		return errors.New("отсутствует текст сообщения")
 	}
 	msg.ParseMode = "Markdown"
 	msg.DisableWebPagePreview = true
-	bot.Send(msg)
-	return nil
-}
-
-func forgetLogin(userID int) {
-	delete(logins, userID)
-}
-
-func setWaitLogin(userID int) {
-	logins[userID] = ""
-}
-
-func setWaitKey(userID int, login string) {
-	logins[userID] = login
-}
-
-func isWaitingKey(userID int) (bool, string) {
-	for id, login := range logins {
-		if userID == id {
-			return true, login
-		}
+	_, err = bot.Send(msg)
+	if err != nil {
+		return err
 	}
-	return false, ""
+	return nil
 }
 
 func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Update, config config.Config, database *sql.DB) error {
@@ -498,7 +489,7 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 		return 0
 	}
 	for _, credential := range credentials {
-		client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
 	}
 	log.Printf("Загружено %d аккаунтов", len(credentials))
 
@@ -506,7 +497,7 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 	var wg sync.WaitGroup
 	wg.Add(len(credentials))
 	for _, credential := range credentials {
-		client.Key_List[credential.UserName] = client.Keys{PKey: credential.PostingKey}
+		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
 		go func(credential models.Credential) {
 			defer wg.Done()
 			weight := vote.Percent * 100
@@ -525,8 +516,8 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 
 func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
 	stringVoteID := strconv.FormatInt(voteID, 10)
-	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍 Лайк ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
-	badButton := tgbotapi.NewInlineKeyboardButtonData("👎 Дизлайк ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
+	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍Поддержать ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
+	badButton := tgbotapi.NewInlineKeyboardButtonData("👎Отклонить ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
 	row := []tgbotapi.InlineKeyboardButton{badButton, goodButton}
 	markup := tgbotapi.InlineKeyboardMarkup{}
 	markup.InlineKeyboard = append(markup.InlineKeyboard, row)

@@ -25,13 +25,34 @@ func createTables(db *sql.DB) error {
 	switch version {
 	case 0:
 		query := `
+		CREATE TABLE states(
+			user_id INTEGER PRIMARY KEY NOT NULL,
+			action TEXT
+		);
 		CREATE TABLE votes(
 			id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 			user_id INTEGER,
 			author TEXT,
 			permalink TEXT,
-			percent INTEGER
+			percent INTEGER,
+			completed BOOLEAN NOT NULL CHECK (completed IN (0,1)) DEFAULT 0,
+			date DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
+		CREATE TABLE credentials(
+			user_id INTEGER PRIMARY KEY NOT NULL,
+			user_name TEXT UNIQUE,
+			rating INTEGER NOT NULL DEFAULT 10,
+			active BOOLEAN NOT NULL CHECK (active IN (0,1)) DEFAULT 0
+		);
+		CREATE TABLE responses(
+			id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+			user_id INTEGER,
+			vote_id INTEGER,
+			result BOOLEAN NOT NULL CHECK (result IN (0,1)),
+			date DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE UNIQUE INDEX idx_user_vote ON responses(user_id, vote_id);
+		CREATE UNIQUE INDEX idx_author_permalink ON votes(author, permalink);
 		`
 		_, err = tx.Exec(query)
 		if err != nil {
@@ -39,86 +60,6 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 1)
-		fallthrough
-	case 1:
-		query := `
-		CREATE TABLE credentials(
-			user_id INTEGER PRIMARY KEY NOT NULL,
-			user_name TEXT UNIQUE,
-			posting_key TEXT
-		);
-		`
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		setMigrationVersion(tx, 2)
-		fallthrough
-	case 2:
-		query := `
-		CREATE TABLE responses(
-			id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-			user_id INTEGER,
-			vote_id INTEGER,
-			result BOOLEAN NOT NULL CHECK (result IN (0,1))
-		);
-		`
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		setMigrationVersion(tx, 3)
-		fallthrough
-	case 3:
-		query := `
-		ALTER TABLE credentials ADD COLUMN rating INTEGER NOT NULL DEFAULT 10;
-		`
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		setMigrationVersion(tx, 4)
-		fallthrough
-	case 4:
-		query := `
-		CREATE UNIQUE INDEX idx_user_vote ON responses(user_id, vote_id);
-		`
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		setMigrationVersion(tx, 5)
-		fallthrough
-	case 5:
-		query := `
-		ALTER TABLE votes ADD COLUMN completed BOOLEAN NOT NULL CHECK (completed IN (0,1)) DEFAULT 1;
-		CREATE UNIQUE INDEX idx_author_permalink ON votes(author, permalink);
-		`
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		setMigrationVersion(tx, 6)
-		fallthrough
-	case 6:
-		// нельзя дефолтное динамическое значение через ALTER добавить :(
-		query := `
-		ALTER TABLE votes ADD COLUMN date DATETIME;
-		ALTER TABLE responses ADD COLUMN date DATETIME;
-		UPDATE votes SET date = (DATETIME('now'));
-		UPDATE responses SET date = (DATETIME('now'));
-		`
-		_, err := tx.Exec(query)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-		setMigrationVersion(tx, 7)
 		//fallthrough
 	}
 	tx.Commit()

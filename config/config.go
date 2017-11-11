@@ -6,14 +6,18 @@ import (
 )
 
 type Config struct {
-	TelegramToken          string   `json:"telegramToken"`
-	RequiredVotes          int      `json:"requiredVotes"`
-	InitialUserRating      int      `json:"initialUserRating"`
-	MaximumOpenedVotes     int      `json:"maximumOpenedVotes"`
-	MaximumUserVotesPerDay int      `json:"maximumUserVotesPerDay"`
+	TelegramToken          string   `json:"telegram_token"`
+	Account                string   `json:"account"`
+	PostingKey             string   `json:"posting_key"`
+	ActiveKey              string   `json:"active_key"`
+	RequiredVotes          int      `json:"required_votes"`
+	InitialUserRating      int      `json:"initial_user_rating"`
+	MaximumOpenedVotes     int      `json:"maximum_opened_votes"`
+	MaximumUserVotesPerDay int      `json:"maximum_user_votes_per_day"`
 	Developer              string   `json:"developer"`
-	GroupID                int64    `json:"groupID"`
-	GroupLink              string   `json:"groupLink"`
+	GroupID                int64    `json:"group_id"`
+	GroupLink              string   `json:"group_link"`
+	DatabasePath           string   `json:"database_path"`
 	Chain                  string   `json:"chain"`
 	Rpc                    []string `json:"rpc"`
 }

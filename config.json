@@ -1,12 +1,16 @@
 {
-  "telegramToken": "write-your-telegram-token-here",
-  "requiredVotes": 2,
-  "initialUserRating": 10,
-  "maximumOpenedVotes": 3,
-  "maximumUserVotesPerDay": 4,
+  "telegram_token": "write-your-telegram-token-here",
+  "account": "golosovalochka",
+  "posting_key": "5...",
+  "active_key": "5...",
+  "required_votes": 2,
+  "initial_user_rating": 10,
+  "maximum_opened_votes": 3,
+  "maximum_user_votes_per_day": 4,
   "developer": "@babin",
-  "groupID": -1001143551951,
-  "groupLink": "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
+  "group_id": -1001143551951,
+  "group_link": "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
+  "database_path": "./db/database.db",
   "chain": "golos",
   "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"]
 }

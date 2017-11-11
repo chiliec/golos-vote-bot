@@ -27,8 +27,8 @@ func (response Response) Save(db *sql.DB) (bool, error) {
 }
 
 func (response Response) Exists(db *sql.DB) bool {
-	row := db.QueryRow("SELECT id FROM responses WHERE user_id = ? AND vote_id = ?",
-		response.UserID, response.VoteID)
+	row := db.QueryRow("SELECT id FROM responses "+
+		"WHERE user_id = ? AND vote_id = ?", response.UserID, response.VoteID)
 	var id *int
 	row.Scan(&id)
 	return id != nil
