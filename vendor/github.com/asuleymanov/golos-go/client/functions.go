@@ -534,11 +534,15 @@ func (api *Client) Transfer(from_name, to_name, memo, ammount string) error {
 }
 
 func (api *Client) Login(user_name, key string) bool {
+	return api.LoginWithAuths(user_name, key, []string{}, []string{user_name})
+}
+
+func (api *Client) LoginWithAuths(user_name, key string, requiredAuths []string, requiredPostingAuths []string) bool {
 	json_string := "[\"login\",{\"account\":\"" + user_name + "\",\"app\":\"golos-go(go-steem)\"}]"
 
 	strx := &types.CustomJSONOperation{
-		RequiredAuths:        []string{},
-		RequiredPostingAuths: []string{user_name},
+		RequiredAuths:        requiredAuths,
+		RequiredPostingAuths: requiredPostingAuths,
 		ID:                   "login",
 		JSON:                 json_string,
 	}

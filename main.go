@@ -255,7 +255,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 
 			golos := client.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
-			if golos.Login(credential.UserName, config.PostingKey) {
+			if golos.LoginWithAuths(credential.UserName, config.PostingKey, []string{}, []string{config.Account}) {
 				result, err := credential.Save(database)
 				if err != nil {
 					return err
