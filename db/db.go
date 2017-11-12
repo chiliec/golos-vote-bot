@@ -40,7 +40,7 @@ func createTables(db *sql.DB) error {
 		);
 		CREATE TABLE credentials(
 			user_id INTEGER PRIMARY KEY NOT NULL,
-			user_name TEXT UNIQUE,
+			user_name TEXT,
 			rating INTEGER NOT NULL DEFAULT 10,
 			active BOOLEAN NOT NULL CHECK (active IN (0,1)) DEFAULT 0
 		);
