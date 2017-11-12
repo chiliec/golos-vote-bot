@@ -4,7 +4,7 @@
 [![Test Coverage](https://codeclimate.com/github/GolosTools/golos-vote-bot/badges/coverage.svg)](https://codeclimate.com/github/GolosTools/golos-vote-bot/coverage)
 [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/GolosTools/golos-vote-bot/master/LICENSE)
 
-Бот для коллективного кураторства на Голосе.
+Бот для коллективного кураторства в [социальной блокчейн-сети "Голос"](https://ru.wikipedia.org/wiki/Голос_(социальная_сеть)).
 
 ## Запуск
 
@@ -24,5 +24,6 @@ cp config.json config.local.json
 go run main.go
 ```
 
-### Шаг 4
-Profit!
+## Лицензия
+Лицензия [MIT](https://github.com/GolosTools/golos-vote-bot/blob/master/LICENSE).
+Свободно используйте, распространяйте и не забывайте контрибьютить обратно.
