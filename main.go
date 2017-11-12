@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	addKeyButtonText    = "🗝Добавить ключ"
-	removeKeyButtonText = "❌Удалить ключ"
+	buttonAddKey        = "🐬Кураторство"
+	buttonRemoveKey     = "🦀Остановить"
+	buttonSetPowerLimit = "💪Настройка"
+	buttonInformation   = "⚓️Информация"
 )
 
 func main() {
@@ -97,30 +99,24 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 					msg.Text = "Я такое только в личке буду обсуждать"
 					break
 				}
-				addKeyButton := tgbotapi.NewKeyboardButton(addKeyButtonText)
-				removeKeyButton := tgbotapi.NewKeyboardButton(removeKeyButtonText)
-				firstButtonRow := []tgbotapi.KeyboardButton{addKeyButton, removeKeyButton}
-				keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow)
-				msg.ReplyMarkup = keyboard
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
 					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
 					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
-					"Предлагаю начать с добавления ключа нажатием кнопки \""+addKeyButtonText+"\", "+
+					"Предлагаю начать с нажатия кнопки \""+buttonAddKey+"\", "+
 					"после чего я дам ссылку на группу для предложения постов.\n\n"+
 					"По любым вопросам пиши моему хозяину — %s",
 					update.Message.From.FirstName, config.Developer)
-
 			}
 			state.Action = update.Message.Command()
-		case update.Message.Text == addKeyButtonText:
+		case update.Message.Text == buttonAddKey:
 			if update.Message.Chat.Type != "private" {
 				msg.Text = "Я такое только в личке буду обсуждать"
 				break
 			}
 			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golos.cf/multi/, "+
 				"а затем скажи мне свой логин на Голосе", config.Account)
-			state.Action = addKeyButtonText
-		case update.Message.Text == removeKeyButtonText:
+			state.Action = buttonAddKey
+		case update.Message.Text == buttonRemoveKey:
 			if update.Message.Chat.Type != "private" {
 				msg.Text = "Я такое только в личке буду обсуждать"
 				break
@@ -129,9 +125,9 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			credential, err := models.GetCredentialByUserID(userID, database)
 			if err == nil {
 				if len(credential.UserName) == 0 || false == credential.Active {
-					msg.Text = "У тебя ещё нет моего ключа. " +
-						"Жми кнопку " + addKeyButtonText + "для добавления или используй команду " +
-						"/start для обновления списка кнопок."
+					msg.Text = "У тебя нет моего ключа. " +
+						"Жми кнопку " + buttonAddKey + "для добавления или используй команду " +
+						"/start если что-то пошло не так."
 					break
 				}
 				credential.Active = false
@@ -142,7 +138,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						"https://golos.cf/multi/off.html"
 				}
 			}
-			state.Action = removeKeyButtonText
+			state.Action = buttonRemoveKey
+		case update.Message.Text == buttonSetPowerLimit:
+			msg.Text = "Введи значение делегируемой силы Голоса от 1 до 100%"
+			state.Action = buttonSetPowerLimit
+		case update.Message.Text == buttonInformation:
+			msg.Text = "Пока не реализовано."
+			state.Action = buttonInformation
 		case regexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
@@ -243,7 +245,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				return err
 			}
 			return nil
-		case state.Action == addKeyButtonText:
+		case state.Action == buttonAddKey:
 			login := update.Message.Text
 			credential := models.Credential{
 				UserID:   userID,
@@ -256,20 +258,25 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 
 			golos := client.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
-			if golos.LoginWithAuths(credential.UserName, config.PostingKey, []string{}, []string{config.Account}) {
-				result, err := credential.Save(database)
-				if err != nil {
-					return err
-				}
-				if result {
-					msg.Text = "Логин и приватный ключ успешно сохранён! " +
-						"Присоединяйтесь к нашей группе для участия в курировании: " + config.GroupLink
+			accounts, err := golos.Rpc.Database.GetAccounts([]string{login})
+			if err != nil {
+				return err
+			} else if len(accounts) == 1 {
+				hasPostingAuh := helpers.Contains(accounts[0].Posting.AccountAuths, config.Account)
+				log.Printf("%+v\n%s\n%b", accounts[0].Posting, config.Account, hasPostingAuh)
+				if hasPostingAuh {
+					_, err := credential.Save(database)
+					if err != nil {
+						return err
+					}
+					msg.Text = "Поздравляю, теперь ты полноправный куратор! " +
+						"Присоединяйся к нашей группе для участия в курировании: " + config.GroupLink
 				} else {
-					log.Printf("Не сохранился приватный ключ: %#v", credential)
-					msg.Text = "Не смог сохранить логин и приватный ключ :("
+					msg.Text = fmt.Sprintf("Доступ у этого аккаунта для меня отсутствует. "+
+						"Добавить его можно в https://golos.cf/multi/ для аккаунта *%s*", config.Account)
 				}
 			} else {
-				msg.Text = "Мой публичный ключик ещё не добавлен в твой аккаунт."
+				msg.Text = "Что-то пошло не так. Попробуй повторить позже"
 			}
 		default:
 			if update.Message.Chat.Type != "private" {
@@ -363,11 +370,22 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 	if err != nil {
 		return err
 	}
-	log.Printf("%v", state)
 
 	if msg.Text == "" {
 		return errors.New("отсутствует текст сообщения")
 	}
+
+	if msg.ReplyMarkup == nil {
+		firstButton := tgbotapi.NewKeyboardButton(buttonAddKey)
+		secondButton := tgbotapi.NewKeyboardButton(buttonRemoveKey)
+		firstButtonRow := []tgbotapi.KeyboardButton{firstButton, secondButton}
+		thirdButton := tgbotapi.NewKeyboardButton(buttonSetPowerLimit)
+		fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
+		secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
+		keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow)
+		msg.ReplyMarkup = keyboard
+	}
+
 	msg.ParseMode = "Markdown"
 	msg.DisableWebPagePreview = true
 	_, err = bot.Send(msg)
