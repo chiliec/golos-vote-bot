@@ -401,14 +401,14 @@ type Account struct {
 	ProxiedVsfVotes               []*types.Int  `json:"proxied_vsf_votes"`
 	WitnessesVotedFor             *types.Int    `json:"witnesses_voted_for"`
 	AverageBandwidth              *types.Int    `json:"average_bandwidth"`
-	LifetimeBandwidth             string        `json:"lifetime_bandwidth"`
+	LifetimeBandwidth             *types.Int64  `json:"lifetime_bandwidth"`
 	LastBandwidthUpdate           *types.Time   `json:"last_bandwidth_update"`
 	AverageMarketBandwidth        *types.Int    `json:"average_market_bandwidth"`
 	LastMarketBandwidthUpdate     *types.Time   `json:"last_market_bandwidth_update"`
 	LastPost                      *types.Time   `json:"last_post"`
 	LastRootPost                  *types.Time   `json:"last_root_post"`
 	PostBandwidth                 *types.Int    `json:"post_bandwidth"`
-	NewAverageBandwidth           string        `json:"new_average_bandwidth"`
+	NewAverageBandwidth           *types.Int64  `json:"new_average_bandwidth"`
 	NewAverageMarketBandwidth     *types.Int64  `json:"new_average_market_bandwidth"`
 	VestingBalance                string        `json:"vesting_balance"`
 	Reputation                    *types.Int64  `json:"reputation"`
