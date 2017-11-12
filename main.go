@@ -84,7 +84,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 	}
 
 	if update.Message != nil {
-		regexp, err := regexp.Compile("https://(?:golos.io|goldvoice.club)(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
+		domainList := strings.Join(config.Domains, "|")
+		regexp, err := regexp.Compile("https://(?:" + domainList + ")(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
 		if err != nil {
 			return err
 		}

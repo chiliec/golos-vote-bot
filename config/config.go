@@ -18,6 +18,7 @@ type Config struct {
 	GroupID                int64    `json:"group_id"`
 	GroupLink              string   `json:"group_link"`
 	DatabasePath           string   `json:"database_path"`
+	Domains                []string `json:"domains"`
 	Chain                  string   `json:"chain"`
 	Rpc                    []string `json:"rpc"`
 }
