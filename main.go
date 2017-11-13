@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	buttonAddKey        = "🐬Кураторство"
+	buttonAddKey        = "🐬Делегировать"
 	buttonRemoveKey     = "🦀Остановить"
 	buttonSetPowerLimit = "💪Настройка"
 	buttonInformation   = "⚓️Информация"
@@ -122,14 +122,9 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				break
 			}
 			msg.Text = "Произошла ошибка при удалении ключа"
-			credential, err := models.GetCredentialByUserID(userID, database)
-			if err == nil {
-				if len(credential.UserName) == 0 || false == credential.Active {
-					msg.Text = "У тебя нет моего ключа. " +
-						"Жми кнопку " + buttonAddKey + "для добавления или используй команду " +
-						"/start если что-то пошло не так."
-					break
-				}
+			isActive := models.IsActiveCredential(userID, database)
+			if isActive {
+				credential, err := models.GetCredentialByUserID(userID, database)
 				credential.Active = false
 				result, err := credential.Save(database)
 				if true == result && err == nil {
@@ -137,13 +132,19 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						"Дополнительно можешь удалить все сторонние ключи из своего аккаунта здесь: " +
 						"https://golos.cf/multi/off.html"
 				}
+			} else {
+				msg.Text = "Аккаунт деактивирован"
 			}
 			state.Action = buttonRemoveKey
 		case update.Message.Text == buttonSetPowerLimit:
+			if false == models.IsActiveCredential(userID, database) {
+				msg.Text = "Сначала делегируй мне права кнопкой " + buttonAddKey
+				break
+			}
 			msg.Text = "Введи значение делегируемой силы Голоса от 1 до 100%"
 			state.Action = buttonSetPowerLimit
 		case update.Message.Text == buttonInformation:
-			msg.Text = "Пока не реализовано."
+			msg.Text = "У меня пока нет информации для тебя"
 			state.Action = buttonInformation
 		case regexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
@@ -250,6 +251,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			credential := models.Credential{
 				UserID:   userID,
 				UserName: login,
+				Power:    100,
 				Rating:   config.InitialUserRating,
 			}
 			if rating, err := credential.GetRating(database); err == nil {
@@ -262,9 +264,14 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			if err != nil {
 				return err
 			} else if len(accounts) == 1 {
-				hasPostingAuh := helpers.Contains(accounts[0].Posting.AccountAuths, config.Account)
-				log.Printf("%+v\n%s\n%b", accounts[0].Posting, config.Account, hasPostingAuh)
-				if hasPostingAuh {
+				hasPostingAuth := false
+				for _, auth := range accounts[0].Posting.AccountAuths {
+					if auth.([]interface{})[0] == config.Account {
+						hasPostingAuth = true
+						break
+					}
+				}
+				if hasPostingAuth {
 					_, err := credential.Save(database)
 					if err != nil {
 						return err
@@ -276,7 +283,28 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						"Добавить его можно в https://golos.cf/multi/ для аккаунта *%s*", config.Account)
 				}
 			} else {
-				msg.Text = "Что-то пошло не так. Попробуй повторить позже"
+				msg.Text = fmt.Sprintf("Что-то пошло не так. Попробуй повторить позже "+
+					"или свяжись с разработчиком: %s", config.Developer)
+				log.Printf("Введён некорректный логин: %s", update.Message.Text)
+			}
+		case state.Action == buttonSetPowerLimit:
+			msg.Text = "Не поняла. Введи значение делегируемой силы Голоса от 1 до 100%"
+			value, _ := strconv.Atoi(update.Message.Text)
+			if value >= 1 && value <= 100 {
+				if false == models.IsActiveCredential(userID, database) {
+					msg.Text = "Сначала делегируй мне права кнопкой " + buttonAddKey
+					break
+				}
+				credential, err := models.GetCredentialByUserID(userID, database)
+				if err != nil {
+					return err
+				}
+				err = credential.UpdatePower(value, database)
+				if err != nil {
+					return err
+				}
+				msg.Text = fmt.Sprintf("Предоставленная мне в распоряжение сила Голоса "+
+					"для аккаунта %s теперь равна %d%%", credential.UserName, value)
 			}
 		default:
 			if update.Message.Chat.Type != "private" {
@@ -360,7 +388,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 			// уменьшаем рейтинг голосовавшего при отрциательном голосовании
 			if !response.Result {
-				credential.DecrementRating(database, 1)
+				credential.DecrementRating(1, database)
 			}
 		}
 		return nil
@@ -447,11 +475,11 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 		}
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
-			credential.IncrementRating(database, 1)
+			credential.IncrementRating(1, database)
 			successVotes := vote(voteModel, config, database)
 			msg.Text = fmt.Sprintf("Проголосовала с силой %d%% c %d аккаунтов", voteModel.Percent, successVotes)
 		} else {
-			credential.DecrementRating(database, 2*config.RequiredVotes)
+			credential.DecrementRating(2*config.RequiredVotes, database)
 			rating, err := credential.GetRating(database)
 			if err != nil {
 				return err
@@ -474,7 +502,7 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 					if err != nil {
 						return err
 					}
-					err = credential.IncrementRating(database, 1)
+					err = credential.IncrementRating(1, database)
 					if err != nil {
 						return err
 					}

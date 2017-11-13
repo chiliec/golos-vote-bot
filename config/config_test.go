@@ -24,6 +24,7 @@ func TestLoadConfiguration(t *testing.T) {
 		GroupID:                -1001143551951,
 		GroupLink:              "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
 		DatabasePath:           "./db/database.db",
+		Domains:                []string{"golos.io", "golos.blog", "goldvoice.club"},
 		Chain:                  "golos",
 		Rpc:                    []string{"wss://ws.golos.io", "wss://api.golos.cf"},
 	}

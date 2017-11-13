@@ -41,6 +41,7 @@ func createTables(db *sql.DB) error {
 		CREATE TABLE credentials(
 			user_id INTEGER PRIMARY KEY NOT NULL,
 			user_name TEXT,
+			power INTEGER NOT NULL DEFAULT 100,
 			rating INTEGER NOT NULL DEFAULT 10,
 			active BOOLEAN NOT NULL CHECK (active IN (0,1)) DEFAULT 0
 		);
