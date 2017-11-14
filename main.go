@@ -128,7 +128,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				credential.Active = false
 				result, err := credential.Save(database)
 				if true == result && err == nil {
-					msg.Text = "Успех. Я больше не буду использовать твой аккаунт при курировании постов. " +
+					msg.Text = "Отлично, я больше не буду использовать твой аккаунт при курировании постов. " +
 						"Дополнительно можешь удалить все сторонние ключи из своего аккаунта здесь: " +
 						"https://golos.cf/multi/off.html"
 				}
@@ -254,6 +254,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				UserName: login,
 				Power:    100,
 				Rating:   config.InitialUserRating,
+				Active:   true,
 			}
 			if rating, err := credential.GetRating(database); err == nil {
 				credential.Rating = rating
@@ -279,6 +280,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 					}
 					msg.Text = "Поздравляю, теперь ты полноправный куратор! " +
 						"Присоединяйся к нашей группе для участия в курировании: " + config.GroupLink
+					state.Action = "successAuth"
 				} else {
 					msg.Text = fmt.Sprintf("Доступ у этого аккаунта для меня отсутствует. "+
 						"Добавить его можно в https://golos.cf/multi/ для аккаунта *%s*", config.Account)
