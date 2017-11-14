@@ -247,7 +247,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 			return nil
 		case state.Action == buttonAddKey:
-			login := update.Message.Text
+			login := strings.ToLower(update.Message.Text)
+			login = strings.Trim(login, "@")
 			credential := models.Credential{
 				UserID:   userID,
 				UserName: login,
