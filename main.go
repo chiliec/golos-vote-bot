@@ -144,7 +144,18 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			msg.Text = "Введи значение делегируемой силы Голоса от 1 до 100%"
 			state.Action = buttonSetPowerLimit
 		case update.Message.Text == buttonInformation:
-			msg.Text = "У меня пока нет информации для тебя"
+			if false == models.IsActiveCredential(userID, database) {
+				msg.Text = "У меня пока нет информации для тебя"
+				break
+			}
+			credential, err := models.GetCredentialByUserID(userID, database)
+			if err != nil {
+				return err
+			}
+			msg.Text = fmt.Sprintf("Аккаунт: *%s*\n"+
+				"Делегированная сила: *%d%%*\n"+
+				"Внутренний рейтинг: *%d пунктов*",
+				credential.UserName, credential.Power, credential.Rating)
 			state.Action = buttonInformation
 		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
