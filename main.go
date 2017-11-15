@@ -87,7 +87,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 
 	if update.Message != nil {
 		domainList := strings.Join(config.Domains, "|")
-		regexp, err := regexp.Compile("https://(?:" + domainList + ")(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
+		domainRegexp, err := regexp.Compile("https://(?:" + domainList + ")(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						"https://golos.cf/multi/off.html"
 				}
 			} else {
-				msg.Text = "Аккаунт деактивирован"
+				msg.Text = "Аккаунт не активирован"
 			}
 			state.Action = buttonRemoveKey
 		case update.Message.Text == buttonSetPowerLimit:
@@ -146,10 +146,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 		case update.Message.Text == buttonInformation:
 			msg.Text = "У меня пока нет информации для тебя"
 			state.Action = buttonInformation
-		case regexp.MatchString(update.Message.Text):
+		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
-			matched := regexp.FindStringSubmatch(update.Message.Text)
+			matched := domainRegexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
 
 			golos := client.NewApi(config.Rpc, config.Chain)
@@ -291,8 +291,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				log.Printf("Введён некорректный логин: %s", update.Message.Text)
 			}
 		case state.Action == buttonSetPowerLimit:
-			msg.Text = "Не поняла. Введи значение делегируемой силы Голоса от 1 до 100%"
-			value, _ := strconv.Atoi(update.Message.Text)
+			re := regexp.MustCompile("[0-9]+")
+			valueString := re.FindString(update.Message.Text)
+			value, err := strconv.Atoi(valueString)
+			if err != nil {
+				msg.Text = "Не поняла. Введи значение делегируемой силы Голоса от 1 до 100%"
+				break
+			}
 			if value >= 1 && value <= 100 {
 				if false == models.IsActiveCredential(userID, database) {
 					msg.Text = "Сначала делегируй мне права кнопкой " + buttonAddKey
@@ -307,7 +312,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 					return err
 				}
 				msg.Text = fmt.Sprintf("Предоставленная мне в распоряжение сила Голоса "+
-					"для аккаунта %s теперь равна %d%%", credential.UserName, value)
+					"для аккаунта *%s* теперь равна *%d%%*", credential.UserName, value)
+				state.Action = "updatedPower"
 			}
 		default:
 			if update.Message.Chat.Type != "private" {
