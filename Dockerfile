@@ -14,5 +14,5 @@ COPY --from=0 [ \
     "/go/src/github.com/GolosTools/golos-vote-bot/bin/golos-vote-bot", \
     "/go/src/github.com/GolosTools/golos-vote-bot/config.json", \
     "/go/src/github.com/GolosTools/golos-vote-bot/config.local.json", \
-    "./"]
+    "/root/"]
 ENTRYPOINT ["./golos-vote-bot"]
