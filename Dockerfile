@@ -1,4 +1,4 @@
-FROM golang:1.9.2 as builder
+FROM golang:latest as builder
 RUN mkdir -p /go/src/github.com/GolosTools/golos-vote-bot
 WORKDIR /go/src/github.com/GolosTools/golos-vote-bot
 COPY . .
