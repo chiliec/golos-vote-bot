@@ -331,6 +331,16 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 			msg.Text = "Не понимаю"
 		}
+		if msg.ReplyMarkup == nil && update.Message.Chat.Type == "private" {
+			firstButton := tgbotapi.NewKeyboardButton(buttonAddKey)
+			secondButton := tgbotapi.NewKeyboardButton(buttonRemoveKey)
+			firstButtonRow := []tgbotapi.KeyboardButton{firstButton, secondButton}
+			thirdButton := tgbotapi.NewKeyboardButton(buttonSetPowerLimit)
+			fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
+			secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
+			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow)
+			msg.ReplyMarkup = keyboard
+		}
 	} else if update.CallbackQuery != nil {
 		arr := strings.Split(update.CallbackQuery.Data, "_")
 		voteStringID, action := arr[0], arr[1]
@@ -420,17 +430,6 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 
 	if msg.Text == "" {
 		return errors.New("отсутствует текст сообщения")
-	}
-
-	if msg.ReplyMarkup == nil {
-		firstButton := tgbotapi.NewKeyboardButton(buttonAddKey)
-		secondButton := tgbotapi.NewKeyboardButton(buttonRemoveKey)
-		firstButtonRow := []tgbotapi.KeyboardButton{firstButton, secondButton}
-		thirdButton := tgbotapi.NewKeyboardButton(buttonSetPowerLimit)
-		fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
-		secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
-		keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow)
-		msg.ReplyMarkup = keyboard
 	}
 
 	msg.ParseMode = "Markdown"
