@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -41,6 +42,13 @@ func main() {
 
 	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
+		if err.Error() == "unable to open database file" {
+			path, err := filepath.Abs(configuration.DatabasePath)
+			if err != nil {
+				log.Panic(err)
+			}
+			log.Panic(fmt.Sprintf("unable to open database at path: %s", path))
+		}
 		log.Panic(err)
 	}
 	defer database.Close()
