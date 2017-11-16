@@ -3,7 +3,7 @@
   "account": "golosovalochka",
   "posting_key": "5...",
   "active_key": "5...",
-  "required_votes": 2,
+  "required_votes": 1,
   "initial_user_rating": 10,
   "maximum_opened_votes": 3,
   "maximum_user_votes_per_day": 4,
