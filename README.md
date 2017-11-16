@@ -24,6 +24,17 @@ cp config.json config.local.json
 go run main.go
 ```
 
+## Деплой в Docker
+
+Выполните команды:
+```bash
+docker build --no-cache -t golosovalochka .
+docker stop golosovalochka
+docker rm golosovalochka
+docker run -d -v `pwd`/db:/root/db --name golosovalochka golosovalochka:latest .
+```
+или воспользуйтесь файлом `./redeploy.sh`
+
 ## Лицензия
 Лицензия [MIT](https://github.com/GolosTools/golos-vote-bot/blob/master/LICENSE).
 Свободно используйте, распространяйте и не забывайте контрибьютить обратно.
