@@ -16,7 +16,7 @@ func TestLoadConfiguration(t *testing.T) {
 		Account:                "golosovalochka",
 		PostingKey:             "5...",
 		ActiveKey:              "5...",
-		RequiredVotes:          2,
+		RequiredVotes:          1,
 		InitialUserRating:      10,
 		MaximumOpenedVotes:     3,
 		MaximumUserVotesPerDay: 4,
