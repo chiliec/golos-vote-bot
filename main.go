@@ -99,14 +99,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 		if err != nil {
 			return err
 		}
+		if false == domainRegexp.MatchString(update.Message.Text) && update.Message.Chat.Type != "private" {
+			return nil
+		}
 		switch {
 		case update.Message.IsCommand():
 			switch update.Message.Command() {
 			case "start":
-				if update.Message.Chat.Type != "private" {
-					msg.Text = "Я такое только в личке буду обсуждать"
-					break
-				}
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
 					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
 					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
@@ -117,18 +116,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
-			if update.Message.Chat.Type != "private" {
-				msg.Text = "Я такое только в личке буду обсуждать"
-				break
-			}
 			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golos.cf/multi/, "+
 				"а затем скажи мне свой логин на Голосе", config.Account)
 			state.Action = buttonAddKey
 		case update.Message.Text == buttonRemoveKey:
-			if update.Message.Chat.Type != "private" {
-				msg.Text = "Я такое только в личке буду обсуждать"
-				break
-			}
 			msg.Text = "Произошла ошибка при удалении ключа"
 			isActive := models.IsActiveCredential(userID, database)
 			if isActive {
