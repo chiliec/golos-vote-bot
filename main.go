@@ -200,13 +200,10 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				break
 			}
 
-			credential, err := models.GetCredentialByUserID(userID, database)
-			if err != nil {
-				return err
-			}
-			if false == credential.Active {
-				msg.Text = "Не могу допустить тебя к кураторству, у тебя ещё нет моего ключа. " +
-					"Напиши мне в личку, обсудим этот вопрос"
+			isActive := models.IsActiveCredential(userID, database)
+			if false == isActive {
+				msg.Text = "Я тебя не знаю и не могу допустить к кураторству. " +
+					"Напиши мне в личку, давай обсудим этот вопрос"
 				break
 			}
 
