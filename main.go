@@ -346,6 +346,15 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			return err
 		}
 
+		if false == models.IsActiveCredential(userID, database) {
+			config := tgbotapi.CallbackConfig{
+				CallbackQueryID: update.CallbackQuery.ID,
+				Text:            "Я тебя не знаю, не могу допустить к голосованию",
+			}
+			bot.AnswerCallbackQuery(config)
+			return nil
+		}
+
 		if models.GetLastResponse(database).UserID == userID {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
