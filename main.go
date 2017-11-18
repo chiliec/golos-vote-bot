@@ -106,13 +106,17 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 		case update.Message.IsCommand():
 			switch update.Message.Command() {
 			case "start":
+				username := "%username%"
+				if len(update.Message.From.FirstName) > 0 {
+					username = update.Message.From.FirstName
+				}
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
 					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
 					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
 					"Предлагаю начать с нажатия кнопки \""+buttonAddKey+"\", "+
 					"после чего я дам ссылку на группу для предложения постов.\n\n"+
 					"По любым вопросам пиши моему хозяину — %s",
-					update.Message.From.FirstName, config.Developer)
+					username, config.Developer)
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
