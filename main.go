@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -39,6 +40,8 @@ func main() {
 	if err != nil && !os.IsNotExist(err) {
 		log.Panic(err)
 	}
+
+	client.Key_List[configuration.Account] = client.Keys{AKey: configuration.ActiveKey}
 
 	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
@@ -117,6 +120,24 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 					"после чего я дам ссылку на группу для предложения постов.\n\n"+
 					"По любым вопросам пиши моему хозяину — %s",
 					username, config.Developer)
+				// save referral if exists
+				if len(update.Message.CommandArguments()) > 0 {
+					_, err := models.GetCredentialByUserID(userID, database)
+					if err == sql.ErrNoRows {
+						decodedString, err := base64.URLEncoding.DecodeString(update.Message.CommandArguments())
+						if err == nil {
+							// TODO: проверить существование этого юзера
+							referrer := string(decodedString)
+							referral := models.Referral{UserID: userID, Referrer: referrer, Completed: false}
+							_, err = referral.Save(database)
+							if err != nil {
+								log.Println("не сохранили реферала: " + err.Error())
+							}
+						} else {
+							log.Printf("не смогли раскодировать строку %s", update.Message.CommandArguments())
+						}
+					}
+				}
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
@@ -124,7 +145,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				"а затем скажи мне свой логин на Голосе", config.Account)
 			state.Action = buttonAddKey
 		case update.Message.Text == buttonRemoveKey:
-			msg.Text = "Произошла ошибка при удалении ключа"
+			msg.Text = fmt.Sprintf("Произошла ошибка, свяжись с разработчиком - %s", config.Developer)
 			isActive := models.IsActiveCredential(userID, database)
 			if isActive {
 				credential, err := models.GetCredentialByUserID(userID, database)
@@ -155,10 +176,13 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			if err != nil {
 				return err
 			}
+			encodedUserName := base64.URLEncoding.EncodeToString([]byte(credential.UserName))
+			referralLink := "https://t.me/" + config.TelegramBotName + "?start=" + encodedUserName
 			msg.Text = fmt.Sprintf("Аккаунт: *%s*\n"+
 				"Делегированная сила: *%d%%*\n"+
-				"Внутренний рейтинг: *%d пунктов*",
-				credential.UserName, credential.Power, credential.Rating)
+				"Внутренний рейтинг: *%d пунктов*\n"+
+				"Ссылка для приглашения: [%s](%s)\n(в случае успеха дает обоим по %.3f Силы Голоса)",
+				credential.UserName, credential.Power, credential.Rating, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
 		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
@@ -285,7 +309,19 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 					}
 				}
 				if hasPostingAuth {
-					_, err := credential.Save(database)
+					// send referral fee
+					referral, err := models.GetReferralByUserID(userID, database)
+					if err == nil && false == referral.Completed {
+						if err = referral.SetCompleted(database); err == nil {
+							_, err = models.GetCredentialByUserName(credential.UserName, database)
+							if err == sql.ErrNoRows {
+								go sendReferralFee(referral.Referrer, config, bot, database)
+								go sendReferralFee(credential.UserName, config, bot, database)
+							}
+						}
+					}
+
+					_, err = credential.Save(database)
 					if err != nil {
 						return err
 					}
@@ -631,4 +667,24 @@ func getMessageID(update tgbotapi.Update) (int, error) {
 
 func getInstantViewLink(author string, permalink string) string {
 	return "https://t.me/iv?url=https://goldvoice.club/" + "@" + author + "/" + permalink + "&rhash=70f46c6616076d"
+}
+
+func sendReferralFee(account string, config config.Config, bot *tgbotapi.BotAPI, database *sql.DB) {
+	golos := client.NewApi(config.Rpc, config.Chain)
+	defer golos.Rpc.Close()
+	amount := fmt.Sprintf("%.3f GOLOS", config.ReferralFee)
+	err := golos.TransferToVesting(config.Account, account, amount)
+	if err != nil {
+		log.Println(fmt.Sprintf("Не отправили силу голоса %s аккаунту %s", err.Error(), account))
+		return
+	}
+	models.GetCredentialByUserName(account, database)
+	text := fmt.Sprintf("Аккаунт [@%s](https://golos.io/@%s/transfers) получает %.3f Силы Голоса в рамках партнёрской программы",
+		account, account, config.ReferralFee)
+	msg := tgbotapi.NewMessage(config.GroupID, text)
+	msg.ParseMode = "Markdown"
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Println("Не отправили сообщение: " + text)
+	}
 }

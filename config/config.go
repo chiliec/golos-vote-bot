@@ -7,9 +7,11 @@ import (
 
 type Config struct {
 	TelegramToken          string   `json:"telegram_token"`
+	TelegramBotName        string   `json:"telegram_bot_name"`
 	Account                string   `json:"account"`
 	PostingKey             string   `json:"posting_key"`
 	ActiveKey              string   `json:"active_key"`
+	ReferralFee            float32  `json:"referral_fee"`
 	RequiredVotes          int      `json:"required_votes"`
 	InitialUserRating      int      `json:"initial_user_rating"`
 	MaximumOpenedVotes     int      `json:"maximum_opened_votes"`

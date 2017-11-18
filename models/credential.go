@@ -66,6 +66,12 @@ func GetCredentialByUserID(userID int, db *sql.DB) (credential Credential, err e
 	return credential, err
 }
 
+func GetCredentialByUserName(userName string, db *sql.DB) (credential Credential, err error) {
+	row := db.QueryRow("SELECT user_id, user_name, power, rating, active FROM credentials WHERE user_name = ?", userName)
+	err = row.Scan(&credential.UserID, &credential.UserName, &credential.Power, &credential.Rating, &credential.Active)
+	return credential, err
+}
+
 func GetAllCredentials(db *sql.DB) (credentials []Credential, err error) {
 	rows, err := db.Query("SELECT user_id, user_name, power, rating, active FROM credentials")
 	if err != nil {
