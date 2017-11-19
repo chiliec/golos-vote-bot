@@ -677,7 +677,7 @@ func sendReferralFee(referrer string, referral string, config config.Config, bot
 		log.Println(fmt.Sprintf("Не отправили силу голоса %s \nаккаунту %s", err.Error(), referrer))
 	}
 	if err2 != nil {
-		log.Println(fmt.Sprintf("Не отправили силу голоса %s \nаккаунту %s", err.Error(), referrer))
+		log.Println(fmt.Sprintf("Не отправили силу голоса %s \nаккаунту %s", err.Error(), referral))
 	}
 	if err != nil || err2 != nil {
 		return
@@ -687,7 +687,7 @@ func sendReferralFee(referrer string, referral string, config config.Config, bot
 	}
 	referrerLink := markdownLink(referrer)
 	referralLink := markdownLink(referral)
-	text := fmt.Sprintf("Пригласивший %s и приглашенный %s получают по %.3f Силы Голоса в рамках партнёрской программы",
+	text := fmt.Sprintf("Пригласивший %s и приглашённый %s получают по %.3f Силы Голоса в рамках партнёрской программы",
 		referrerLink, referralLink, config.ReferralFee)
 	msg := tgbotapi.NewMessage(config.GroupID, text)
 	msg.ParseMode = "Markdown"
