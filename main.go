@@ -41,8 +41,6 @@ func main() {
 		log.Panic(err)
 	}
 
-	client.Key_List[configuration.Account] = client.Keys{AKey: configuration.ActiveKey}
-
 	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
 		if err.Error() == "unable to open database file" {
@@ -315,8 +313,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						if err = referral.SetCompleted(database); err == nil {
 							_, err = models.GetCredentialByUserName(credential.UserName, database)
 							if err == sql.ErrNoRows {
-								go sendReferralFee(referral.Referrer, config, bot, database)
-								go sendReferralFee(credential.UserName, config, bot, database)
+								go sendReferralFee(referral.Referrer, credential.UserName, config, bot, database)
 							}
 						}
 					}
@@ -669,18 +666,29 @@ func getInstantViewLink(author string, permalink string) string {
 	return "https://t.me/iv?url=https://goldvoice.club/" + "@" + author + "/" + permalink + "&rhash=70f46c6616076d"
 }
 
-func sendReferralFee(account string, config config.Config, bot *tgbotapi.BotAPI, database *sql.DB) {
+func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI, database *sql.DB) {
 	golos := client.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
+	client.Key_List[config.Account] = client.Keys{AKey: config.ActiveKey}
 	amount := fmt.Sprintf("%.3f GOLOS", config.ReferralFee)
-	err := golos.TransferToVesting(config.Account, account, amount)
+	err := golos.TransferToVesting(config.Account, referrer, amount)
+	err2 := golos.TransferToVesting(config.Account, referral, amount)
 	if err != nil {
-		log.Println(fmt.Sprintf("Не отправили силу голоса %s аккаунту %s", err.Error(), account))
+		log.Println(fmt.Sprintf("Не отправили силу голоса %s \nаккаунту %s", err.Error(), referrer))
+	}
+	if err2 != nil {
+		log.Println(fmt.Sprintf("Не отправили силу голоса %s \nаккаунту %s", err.Error(), referrer))
+	}
+	if err != nil || err2 != nil {
 		return
 	}
-	models.GetCredentialByUserName(account, database)
-	text := fmt.Sprintf("Аккаунт [@%s](https://golos.io/@%s/transfers) получает %.3f Силы Голоса в рамках партнёрской программы",
-		account, account, config.ReferralFee)
+	markdownLink := func(account string) string {
+		return fmt.Sprintf("[@%s](https://golos.io/@%s/transfers)", account, account)
+	}
+	referrerLink := markdownLink(referrer)
+	referralLink := markdownLink(referral)
+	text := fmt.Sprintf("Пригласивший %s и приглашенный %s получают по %.3f Силы Голоса в рамках партнёрской программы",
+		referrerLink, referralLink, config.ReferralFee)
 	msg := tgbotapi.NewMessage(config.GroupID, text)
 	msg.ParseMode = "Markdown"
 	_, err = bot.Send(msg)
