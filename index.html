@@ -66,19 +66,22 @@ button.addEventListener("click", function(event) {
         document.getElementById('out').innerHTML = "<div class='alert alert-warning' role='alert'><h4>Не введены данные!</h4>";
         return;
     }
+    button.disabled = true;
     steem.api.getAccounts([creator], function(err, data) {
         if (err) {
             console.warn(err);
+            button.disabled = false;
             return;
         }
         if (data.length === 0) {
             document.getElementById('out').innerHTML = "<div class='alert alert-warning' role='alert'><h4>Некорректный логин или приватный активный ключ!</h4>";
+            button.disabled = false;
             return;
         }
         var account = data[0];
         var pAuth = account.posting;
-        for (const auth in pAuth.account_auths) {
-            if (auth[0] == recipient) {
+        for (i = 0; i < pAuth.account_auths.length; i++) {
+            if (pAuth.account_auths[i][0] == recipient) {
                 document.getElementById('out').innerHTML = "<div class='alert alert-primary' role='alert'><h4>Доступ уже делегирован!</h4>Закрой окно и введи свой логин в Голосовалочке"
                 return;
             }
@@ -89,6 +92,7 @@ button.addEventListener("click", function(event) {
             console.log(err, result);
             if (err) {
                 return document.getElementById('out').innerHTML = "<div class='alert alert-danger' role='alert'><h4>Ошибка!</h4>Подробности ошибки в консоли браузера</div>"
+                button.disabled = false;
             } else {
                 document.getElementById('out').innerHTML = "<div class='alert alert-primary' role='alert'><h4>Успех!</h4>Закрой окно и введи свой логин в Голосовалочке"
             }
