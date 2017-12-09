@@ -139,7 +139,8 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
-			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golos.cf/multi/, "+
+			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golostools.github.io/golos-vote-bot/ "+
+				"(или через [форму от vik'a](https://golos.cf/multi/)), "+
 				"а затем скажи мне свой логин на Голосе", config.Account)
 			state.Action = buttonAddKey
 		case update.Message.Text == buttonRemoveKey:
