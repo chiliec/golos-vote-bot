@@ -40,6 +40,9 @@ func main() {
 	if err != nil && !os.IsNotExist(err) {
 		log.Panic(err)
 	}
+	if configuration.TelegramToken == "write-your-telegram-token-here" {
+		log.Panic("Токен для телеграма не введён")
+	}
 
 	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
