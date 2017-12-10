@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -559,7 +560,9 @@ func (c *Conn) readMessages(ctx context.Context) {
 	c.mu.Unlock()
 	c.sending.Unlock()
 	if err != io.ErrUnexpectedEOF && !closing {
-		log.Println("jsonrpc2: protocol error:", err)
+		if !strings.Contains(fmt.Sprint(err), "i/o timeout") {
+			log.Println("jsonrpc2: protocol error:", err)
+		}
 	}
 	close(c.disconnect)
 }

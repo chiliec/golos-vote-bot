@@ -35,6 +35,12 @@ docker run -d -v `pwd`/db:/root/db --name golosovalochka golosovalochka:latest .
 ```
 или воспользуйтесь файлом `./redeploy.sh`
 
+## Обновление зависимостей
+
+Для управления зависимостями используется [Dep](https://github.com/golang/dep).
+
+Для обновления зависимостей выполните команду `dep ensure -update`.
+
 ## Лицензия
 Лицензия [MIT](https://github.com/GolosTools/golos-vote-bot/blob/master/LICENSE).
 Свободно используйте, распространяйте и не забывайте контрибьютить обратно.

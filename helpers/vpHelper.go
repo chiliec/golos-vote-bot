@@ -2,7 +2,7 @@ package helpers
 
 import "strings"
 
-func IsVoxPopuli(author string) (bool) {
+func IsVoxPopuli(author string) bool {
 	extraVPNames := []string{
 		"vox-populi",
 		"rblogger",
