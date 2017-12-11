@@ -17,6 +17,7 @@ func TestLoadConfiguration(t *testing.T) {
 		Account:                "golosovalochka",
 		PostingKey:             "5...",
 		ActiveKey:              "5...",
+		TextRuToken:            "",
 		ReferralFee:            5.0,
 		RequiredVotes:          2,
 		InitialUserRating:      10,

@@ -3,9 +3,12 @@ package main
 import (
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,6 +19,7 @@ import (
 
 	"github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/grokify/html-strip-tags-go"
 
 	"github.com/GolosTools/golos-vote-bot/config"
 	"github.com/GolosTools/golos-vote-bot/db"
@@ -278,10 +282,12 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 			msg.DisableWebPagePreview = false
-			_, err = bot.Send(msg)
+			message, err := bot.Send(msg)
 			if err != nil {
 				return err
 			}
+			textWithoutTags := strip.StripTags(post.Body)
+			go checkUniqueness(message, bot, textWithoutTags, config)
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -592,6 +598,114 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 	}
 	_, err := bot.KickChatMember(memberConfig)
 	return err
+}
+
+// https://text.ru/api-check/manual
+func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string, config config.Config) {
+	token := config.TextRuToken
+	if len(config.TextRuToken) == 0 {
+		return
+	}
+
+	if len(text) < 200 {
+		return
+	}
+
+	cut := func(text string, to int) string {
+		runes := []rune(text)
+		if len(runes) > to {
+			return string(runes[:to])
+		}
+		return text
+	}
+	maxSymbolCount := 1000
+	text = cut(text, maxSymbolCount)
+
+	client := http.Client{}
+	form := url.Values{}
+	form.Add("text", text)
+	form.Add("userkey", token)
+	domainList := strings.Join(config.Domains, ",")
+	form.Add("exceptdomain", domainList)
+	form.Add("visible", "vis_on")
+	req, err := http.NewRequest("POST", "http://api.text.ru/post", strings.NewReader(form.Encode()))
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	if resp.StatusCode != 200 {
+		log.Println("статус не 200")
+		return
+	}
+	type Uid struct {
+		TextUid string `json:"text_uid"`
+	}
+	var uid Uid
+	jsonParser := json.NewDecoder(resp.Body)
+	jsonParser.Decode(&uid)
+	if len(uid.TextUid) == 0 {
+		log.Println("Не распарсили text_uid")
+		return
+	}
+	step := 0
+	for step < 100 {
+		step += 1
+		time.Sleep(time.Second * 15)
+		log.Printf("step %d", step)
+		client := http.Client{}
+		form := url.Values{}
+		form.Add("uid", uid.TextUid)
+		form.Add("userkey", token)
+		//form.Add("jsonvisible", "detail")
+		req, err := http.NewRequest("POST", "http://api.text.ru/post", strings.NewReader(form.Encode()))
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		type Result struct {
+			TextUnique string `json:"text_unique"`
+			ResultJson string `json:"result_json"`
+		}
+		var result Result
+		jsonParser := json.NewDecoder(resp.Body)
+		jsonParser.Decode(&result)
+		if len(result.TextUnique) == 0 {
+			continue
+		}
+		textUnique, err := strconv.ParseFloat(result.TextUnique, 32)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		log.Println(textUnique)
+		if textUnique < 70 {
+			// TODO: закрыть голосование
+			// TODO: понизить куратору карму
+			editMessage := tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:      config.GroupID,
+					MessageID:   message.MessageID,
+					ReplyMarkup: nil,
+				},
+				Text:      fmt.Sprintf("Текст не уникальный. Уникальность текста всего %.0f%%", textUnique),
+				ParseMode: "markdown",
+			}
+			_, err = bot.Send(editMessage)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
+		// TODO: запостить комментарий в пост с плашкой от text.ru
+		break
+	}
 }
 
 func vote(vote models.Vote, config config.Config, database *sql.DB) int {
