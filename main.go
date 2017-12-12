@@ -612,7 +612,7 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
 		go func(credential models.Credential) {
 			defer wg.Done()
-			weight := vote.Percent * 100
+			weight := credential.Power * 100
 			golos := client.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
