@@ -18,7 +18,7 @@ func TestLoadConfiguration(t *testing.T) {
 		PostingKey:             "5...",
 		ActiveKey:              "5...",
 		ReferralFee:            5.0,
-		RequiredVotes:          2,
+		RequiredVotes:          4,
 		InitialUserRating:      10,
 		MaximumOpenedVotes:     3,
 		MaximumUserVotesPerDay: 4,
