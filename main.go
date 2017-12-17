@@ -287,7 +287,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				return err
 			}
 			textWithoutTags := strip.StripTags(post.Body)
-			go checkUniqueness(message, bot, textWithoutTags, config)
+			go checkUniqueness(message, bot, textWithoutTags, config, voteModel, database)
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -601,7 +601,7 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 }
 
 // https://text.ru/api-check/manual
-func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string, config config.Config) {
+func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string, config config.Config, voteModel models.Vote, database *sql.DB) {
 	token := config.TextRuToken
 	if len(config.TextRuToken) == 0 {
 		return
@@ -618,8 +618,9 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		}
 		return text
 	}
-	maxSymbolCount := 1000
+	maxSymbolCount := 3000
 	text = cut(text, maxSymbolCount)
+	// TODO: почистить текст от тегов и другого мусора
 
 	client := http.Client{}
 	form := url.Values{}
@@ -654,7 +655,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		return
 	}
 	step := 0
-	for step < 100 {
+	for step < 30 {
 		step += 1
 		time.Sleep(time.Second * 15)
 		log.Printf("step %d", step)
@@ -687,7 +688,12 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		}
 		log.Println(textUnique)
 		if textUnique < 70 {
-			// TODO: закрыть голосование
+			voteModel.Completed = true
+			_, err := voteModel.Save(database)
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
 			// TODO: понизить куратору карму
 			editMessage := tgbotapi.EditMessageTextConfig{
 				BaseEdit: tgbotapi.BaseEdit{
@@ -695,7 +701,8 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 					MessageID:   message.MessageID,
 					ReplyMarkup: nil,
 				},
-				Text:      fmt.Sprintf("Текст не уникальный. Уникальность текста всего %.0f%%", textUnique),
+				Text: fmt.Sprintf("Текст не уникальный. Уникальность текста всего %.0f%% "+
+					"по [text.ru](https://text.ru/antiplagiat/%s)", textUnique, uid.TextUid),
 				ParseMode: "markdown",
 			}
 			_, err = bot.Send(editMessage)
