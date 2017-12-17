@@ -230,7 +230,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 
 			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
-				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся?"
+				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся? Ищи по тегу #открыто"
 				break
 			}
 
@@ -278,7 +278,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			msg.Text = "Голосование за пост открыто\n" + getInstantViewLink(author, permalink)
+			msg.Text = "Голосование за пост #открыто\n" + getInstantViewLink(author, permalink)
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 			msg.DisableWebPagePreview = false
@@ -726,7 +726,7 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
 		go func(credential models.Credential) {
 			defer wg.Done()
-			weight := vote.Percent * 100
+			weight := credential.Power * 100
 			golos := client.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)

@@ -6,7 +6,7 @@
   "active_key": "5...",
   "text_ru_token": "",
   "referral_fee": 5.0,
-  "required_votes": 2,
+  "required_votes": 4,
   "initial_user_rating": 10,
   "maximum_opened_votes": 3,
   "maximum_user_votes_per_day": 4,
