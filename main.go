@@ -720,10 +720,8 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 			return rand.Intn(max-min) + min
 		}
 		imageNumber := random(1, 18)
-		report := fmt.Sprintf("<a target=\"_blank\" href=\"https://text.ru/antiplagiat/%s\">"+
-			"<img src=\"https://text.ru/image/get/%s/%d\" alt=\"TEXT.RU - %.0f%%\" "+
-			"title=\"Уникальность данного текста проверена через TEXT.RU\" border=\"0\" width=\"80\" height=\"31\"></a>",
-			uid.TextUid, uid.TextUid, imageNumber, textUnique)
+		report := fmt.Sprintf("[![Уникальность проверена через TEXT.RU](https://text.ru/image/get/%s/%d)](https://text.ru/antiplagiat/%s)",
+			uid.TextUid, imageNumber, uid.TextUid)
 		err = sendComment(config, voteModel.Author, voteModel.Permalink, report)
 		if err != nil {
 			log.Println(err.Error())
