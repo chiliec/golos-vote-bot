@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asuleymanov/golos-go/client"
+	golosClient "github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/grokify/html-strip-tags-go"
 
@@ -47,6 +48,10 @@ func main() {
 	if configuration.TelegramToken == "write-your-telegram-token-here" {
 		log.Panic("Токен для телеграма не введён")
 	}
+
+	golosClient.Key_List[configuration.Account] = golosClient.Keys{
+		PKey: configuration.PostingKey,
+		AKey: configuration.ActiveKey}
 
 	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
@@ -196,7 +201,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			matched := domainRegexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
 
-			golos := client.NewApi(config.Rpc, config.Chain)
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			post, err := golos.Rpc.Database.GetContent(author, permalink)
 			if err != nil {
@@ -303,7 +308,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				credential.Rating = rating
 			}
 
-			golos := client.NewApi(config.Rpc, config.Chain)
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			accounts, err := golos.Rpc.Database.GetAccounts([]string{login})
 			if err != nil {
@@ -618,11 +623,11 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		}
 		return text
 	}
-	maxSymbolCount := 3000
+	maxSymbolCount := 2000
 	text = cut(text, maxSymbolCount)
 	// TODO: почистить текст от тегов и другого мусора
 
-	client := http.Client{}
+	httpClient := http.Client{}
 	form := url.Values{}
 	form.Add("text", text)
 	form.Add("userkey", token)
@@ -635,7 +640,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		return
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -655,7 +660,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		return
 	}
 	step := 0
-	for step < 30 {
+	for step < 50 {
 		step += 1
 		time.Sleep(time.Second * 15)
 		log.Printf("step %d", step)
@@ -687,7 +692,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 			return
 		}
 		log.Println(textUnique)
-		if textUnique < 70 {
+		if textUnique < 20 {
 			voteModel.Completed = true
 			_, err := voteModel.Save(database)
 			if err != nil {
@@ -710,9 +715,37 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 				log.Println(err.Error())
 			}
 		}
-		// TODO: запостить комментарий в пост с плашкой от text.ru
+		random := func(min, max int) int {
+			rand.Seed(time.Now().Unix())
+			return rand.Intn(max-min) + min
+		}
+		imageNumber := random(1, 18)
+		report := fmt.Sprintf("<a target=\"_blank\" href=\"https://text.ru/antiplagiat/%s\">"+
+			"<img src=\"https://text.ru/image/get/%s/%d\" alt=\"TEXT.RU - %.0f%%\" "+
+			"title=\"Уникальность данного текста проверена через TEXT.RU\" border=\"0\" width=\"80\" height=\"31\"></a>",
+			uid.TextUid, uid.TextUid, imageNumber, textUnique)
+		err = sendComment(config, voteModel.Author, voteModel.Permalink, report)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		// если дошли сюда, то выходим из цикла
 		break
 	}
+}
+
+func sendComment(config config.Config, author string, permalink string, text string) error {
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
+	defer golos.Rpc.Close()
+	vote := golosClient.PC_Vote{Weight: 10 * 100}
+	options := golosClient.PC_Options{Percent: 50}
+	err := golos.Comment(
+		config.Account,
+		author,
+		permalink,
+		text,
+		&vote,
+		&options)
+	return err
 }
 
 func vote(vote models.Vote, config config.Config, database *sql.DB) int {
@@ -722,7 +755,9 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 		return 0
 	}
 	for _, credential := range credentials {
-		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
+		if config.Account != credential.UserName {
+			golosClient.Key_List[credential.UserName] = golosClient.Keys{PKey: config.PostingKey}
+		}
 	}
 	log.Printf("Загружено %d аккаунтов", len(credentials))
 
@@ -730,11 +765,10 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 	var wg sync.WaitGroup
 	wg.Add(len(credentials))
 	for _, credential := range credentials {
-		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
 		go func(credential models.Credential) {
 			defer wg.Done()
 			weight := credential.Power * 100
-			golos := client.NewApi(config.Rpc, config.Chain)
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
@@ -792,9 +826,8 @@ func getInstantViewLink(author string, permalink string) string {
 }
 
 func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI, database *sql.DB) {
-	golos := client.NewApi(config.Rpc, config.Chain)
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	client.Key_List[config.Account] = client.Keys{AKey: config.ActiveKey}
 	amount := fmt.Sprintf("%.3f GOLOS", config.ReferralFee)
 	err := golos.TransferToVesting(config.Account, referrer, amount)
 	err2 := golos.TransferToVesting(config.Account, referral, amount)
