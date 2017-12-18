@@ -11,6 +11,7 @@ type Config struct {
 	Account                string   `json:"account"`
 	PostingKey             string   `json:"posting_key"`
 	ActiveKey              string   `json:"active_key"`
+	TextRuToken            string   `json:"text_ru_token"`
 	ReferralFee            float32  `json:"referral_fee"`
 	RequiredVotes          int      `json:"required_votes"`
 	InitialUserRating      int      `json:"initial_user_rating"`

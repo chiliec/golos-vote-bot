@@ -3,9 +3,13 @@ package main
 import (
 	"database/sql"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -14,8 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/asuleymanov/golos-go/client"
+	golosClient "github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+	"github.com/grokify/html-strip-tags-go"
 
 	"github.com/GolosTools/golos-vote-bot/config"
 	"github.com/GolosTools/golos-vote-bot/db"
@@ -43,6 +48,10 @@ func main() {
 	if configuration.TelegramToken == "write-your-telegram-token-here" {
 		log.Panic("Токен для телеграма не введён")
 	}
+
+	golosClient.Key_List[configuration.Account] = golosClient.Keys{
+		PKey: configuration.PostingKey,
+		AKey: configuration.ActiveKey}
 
 	database, err := db.InitDB(configuration.DatabasePath)
 	if err != nil {
@@ -192,7 +201,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			matched := domainRegexp.FindStringSubmatch(update.Message.Text)
 			author, permalink := matched[1], matched[2]
 
-			golos := client.NewApi(config.Rpc, config.Chain)
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			post, err := golos.Rpc.Database.GetContent(author, permalink)
 			if err != nil {
@@ -278,10 +287,12 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			markup := getVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 			msg.DisableWebPagePreview = false
-			_, err = bot.Send(msg)
+			message, err := bot.Send(msg)
 			if err != nil {
 				return err
 			}
+			textWithoutTags := strip.StripTags(post.Body)
+			go checkUniqueness(message, bot, textWithoutTags, config, voteModel, database)
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -297,7 +308,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				credential.Rating = rating
 			}
 
-			golos := client.NewApi(config.Rpc, config.Chain)
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			accounts, err := golos.Rpc.Database.GetAccounts([]string{login})
 			if err != nil {
@@ -594,6 +605,149 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 	return err
 }
 
+// https://text.ru/api-check/manual
+func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string, config config.Config, voteModel models.Vote, database *sql.DB) {
+	token := config.TextRuToken
+	if len(config.TextRuToken) == 0 {
+		return
+	}
+
+	if len(text) < 200 {
+		return
+	}
+
+	cut := func(text string, to int) string {
+		runes := []rune(text)
+		if len(runes) > to {
+			return string(runes[:to])
+		}
+		return text
+	}
+	maxSymbolCount := 2000
+	text = cut(text, maxSymbolCount)
+	// TODO: почистить текст от тегов и другого мусора
+
+	httpClient := http.Client{}
+	form := url.Values{}
+	form.Add("text", text)
+	form.Add("userkey", token)
+	domainList := strings.Join(config.Domains, ",")
+	form.Add("exceptdomain", domainList)
+	form.Add("visible", "vis_on")
+	req, err := http.NewRequest("POST", "http://api.text.ru/post", strings.NewReader(form.Encode()))
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
+	if resp.StatusCode != 200 {
+		log.Println("статус не 200")
+		return
+	}
+	type Uid struct {
+		TextUid string `json:"text_uid"`
+	}
+	var uid Uid
+	jsonParser := json.NewDecoder(resp.Body)
+	jsonParser.Decode(&uid)
+	if len(uid.TextUid) == 0 {
+		log.Println("Не распарсили text_uid")
+		return
+	}
+	step := 0
+	for step < 50 {
+		step += 1
+		time.Sleep(time.Second * 15)
+		log.Printf("step %d", step)
+		client := http.Client{}
+		form := url.Values{}
+		form.Add("uid", uid.TextUid)
+		form.Add("userkey", token)
+		//form.Add("jsonvisible", "detail")
+		req, err := http.NewRequest("POST", "http://api.text.ru/post", strings.NewReader(form.Encode()))
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := client.Do(req)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		type Result struct {
+			TextUnique string `json:"text_unique"`
+			ResultJson string `json:"result_json"`
+		}
+		var result Result
+		jsonParser := json.NewDecoder(resp.Body)
+		jsonParser.Decode(&result)
+		if len(result.TextUnique) == 0 {
+			continue
+		}
+		textUnique, err := strconv.ParseFloat(result.TextUnique, 32)
+		if err != nil {
+			log.Println(err.Error())
+			return
+		}
+		log.Println(textUnique)
+		if textUnique < 20 {
+			voteModel.Completed = true
+			_, err := voteModel.Save(database)
+			if err != nil {
+				log.Println(err.Error())
+				return
+			}
+			// TODO: понизить куратору карму
+			editMessage := tgbotapi.EditMessageTextConfig{
+				BaseEdit: tgbotapi.BaseEdit{
+					ChatID:      config.GroupID,
+					MessageID:   message.MessageID,
+					ReplyMarkup: nil,
+				},
+				Text: fmt.Sprintf("Текст не уникальный. Уникальность текста всего %.0f%% "+
+					"по [text.ru](https://text.ru/antiplagiat/%s)", textUnique, uid.TextUid),
+				ParseMode: "markdown",
+			}
+			_, err = bot.Send(editMessage)
+			if err != nil {
+				log.Println(err.Error())
+			}
+		}
+		random := func(min, max int) int {
+			rand.Seed(time.Now().Unix())
+			return rand.Intn(max-min) + min
+		}
+		imageNumber := random(1, 18)
+		report := fmt.Sprintf("<a target=\"_blank\" href=\"https://text.ru/antiplagiat/%s\">"+
+			"<img src=\"https://text.ru/image/get/%s/%d\" alt=\"TEXT.RU - %.0f%%\" "+
+			"title=\"Уникальность данного текста проверена через TEXT.RU\" border=\"0\" width=\"80\" height=\"31\"></a>",
+			uid.TextUid, uid.TextUid, imageNumber, textUnique)
+		err = sendComment(config, voteModel.Author, voteModel.Permalink, report)
+		if err != nil {
+			log.Println(err.Error())
+		}
+		// если дошли сюда, то выходим из цикла
+		break
+	}
+}
+
+func sendComment(config config.Config, author string, permalink string, text string) error {
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
+	defer golos.Rpc.Close()
+	vote := golosClient.PC_Vote{Weight: 10 * 100}
+	options := golosClient.PC_Options{Percent: 50}
+	err := golos.Comment(
+		config.Account,
+		author,
+		permalink,
+		text,
+		&vote,
+		&options)
+	return err
+}
+
 func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 	credentials, err := models.GetAllCredentials(database)
 	if err != nil {
@@ -601,7 +755,9 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 		return 0
 	}
 	for _, credential := range credentials {
-		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
+		if config.Account != credential.UserName {
+			golosClient.Key_List[credential.UserName] = golosClient.Keys{PKey: config.PostingKey}
+		}
 	}
 	log.Printf("Загружено %d аккаунтов", len(credentials))
 
@@ -609,11 +765,10 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 	var wg sync.WaitGroup
 	wg.Add(len(credentials))
 	for _, credential := range credentials {
-		client.Key_List[credential.UserName] = client.Keys{PKey: config.PostingKey}
 		go func(credential models.Credential) {
 			defer wg.Done()
 			weight := credential.Power * 100
-			golos := client.NewApi(config.Rpc, config.Chain)
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
 			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
@@ -671,9 +826,8 @@ func getInstantViewLink(author string, permalink string) string {
 }
 
 func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI, database *sql.DB) {
-	golos := client.NewApi(config.Rpc, config.Chain)
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	client.Key_List[config.Account] = client.Keys{AKey: config.ActiveKey}
 	amount := fmt.Sprintf("%.3f GOLOS", config.ReferralFee)
 	err := golos.TransferToVesting(config.Account, referrer, amount)
 	err2 := golos.TransferToVesting(config.Account, referral, amount)

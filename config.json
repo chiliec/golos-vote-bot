@@ -4,6 +4,7 @@
   "account": "golosovalochka",
   "posting_key": "5...",
   "active_key": "5...",
+  "text_ru_token": "",
   "referral_fee": 5.0,
   "required_votes": 4,
   "initial_user_rating": 10,
