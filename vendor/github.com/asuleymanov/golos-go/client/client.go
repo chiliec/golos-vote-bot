@@ -1,10 +1,8 @@
 package client
 
 import (
-	// Vendor
-	"github.com/pkg/errors"
+	"log"
 
-	// RPC
 	"github.com/asuleymanov/golos-go"
 	"github.com/asuleymanov/golos-go/transactions"
 	"github.com/asuleymanov/golos-go/transports/websocket"
@@ -38,13 +36,13 @@ func initclient(url []string) *rpc.Client {
 	// Инициализация Websocket
 	t, err := websocket.NewTransport(url)
 	if err != nil {
-		panic(errors.Wrapf(err, "Error Websocket: "))
+		log.Println(err)
 	}
 
 	// Инициализация RPC клиента
 	client, err := rpc.NewClient(t)
 	if err != nil {
-		panic(errors.Wrapf(err, "Error RPC: "))
+		log.Println(err)
 	}
 	//defer client.Close()
 	return client
@@ -69,56 +67,11 @@ func NewApi(url []string, chain string) *Client {
 	}
 }
 
-func (api *Client) Send_Trx(username string, strx types.Operation) (*BResp, error) {
+func (api *Client) Send_Trx(username string, strx []types.Operation) (*BResp, error) {
 	// Получение необходимых параметров
 	props, err := api.Rpc.Database.GetDynamicGlobalProperties()
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error get DynamicGlobalProperties: ")
-	}
-
-	// Создание транзакции
-	refBlockPrefix, err := transactions.RefBlockPrefix(props.HeadBlockID)
 	if err != nil {
 		return nil, err
-	}
-	tx := transactions.NewSignedTransaction(&types.Transaction{
-		RefBlockNum:    transactions.RefBlockNum(props.HeadBlockNumber),
-		RefBlockPrefix: refBlockPrefix,
-	})
-
-	// Добавление операций в транзакцию
-	tx.PushOperation(strx)
-
-	// Получаем необходимый для подписи ключ
-	privKeys := api.Signing_Keys(username, strx)
-
-	// Подписываем транзакцию
-	if err := tx.Sign(privKeys, api.Chain); err != nil {
-		return nil, errors.Wrapf(err, "Error Sign: ")
-	}
-
-	// Отправка транзакции
-	resp, err := api.Rpc.NetworkBroadcast.BroadcastTransactionSynchronous(tx.Transaction)
-
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error BroadcastTransactionSynchronous: ")
-	} else {
-		var bresp BResp
-
-		bresp.ID = resp.ID
-		bresp.BlockNum = resp.BlockNum
-		bresp.TrxNum = resp.TrxNum
-		bresp.Expired = resp.Expired
-
-		return &bresp, nil
-	}
-}
-
-func (api *Client) Send_Arr_Trx(username string, strx []types.Operation) (*BResp, error) {
-	// Получение необходимых параметров
-	props, err := api.Rpc.Database.GetDynamicGlobalProperties()
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error get DynamicGlobalProperties: ")
 	}
 
 	// Создание транзакции
@@ -141,14 +94,14 @@ func (api *Client) Send_Arr_Trx(username string, strx []types.Operation) (*BResp
 
 	// Подписываем транзакцию
 	if err := tx.Sign(privKeys, api.Chain); err != nil {
-		return nil, errors.Wrapf(err, "Error Sign: ")
+		return nil, err
 	}
 
 	// Отправка транзакции
 	resp, err := api.Rpc.NetworkBroadcast.BroadcastTransactionSynchronous(tx.Transaction)
 
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error BroadcastTransactionSynchronous: ")
+		return nil, err
 	} else {
 		var bresp BResp
 
@@ -165,7 +118,7 @@ func (api *Client) Verify_Trx(username string, strx types.Operation) (bool, erro
 	// Получение необходимых параметров
 	props, err := api.Rpc.Database.GetDynamicGlobalProperties()
 	if err != nil {
-		return false, errors.Wrapf(err, "Error get DynamicGlobalProperties: ")
+		return false, err
 	}
 
 	// Создание транзакции
@@ -186,14 +139,14 @@ func (api *Client) Verify_Trx(username string, strx types.Operation) (bool, erro
 
 	// Подписываем транзакцию
 	if err := tx.Sign(privKeys, api.Chain); err != nil {
-		return false, errors.Wrapf(err, "Error Sign: ")
+		return false, err
 	}
 
 	// Отправка транзакции
 	resp, err := api.Rpc.Database.GetVerifyAuthoruty(tx.Transaction)
 
 	if err != nil {
-		return false, errors.Wrapf(err, "Error BroadcastTransactionSynchronous: ")
+		return false, err
 	} else {
 		return resp, nil
 	}

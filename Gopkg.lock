@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/asuleymanov/golos-go"
   packages = [".","apis/database","apis/follow","apis/login","apis/market","apis/networkbroadcast","client","encoding/transaction","encoding/wif","interfaces","internal/rpc","rfc6979","transactions","translit","transports/websocket","types"]
-  revision = "b506cf55baa379fac375d97cef6c44aefea63eca"
+  revision = "bed737295351d29981f34a72c142275d32f09821"
 
 [[projects]]
   branch = "master"
@@ -69,6 +69,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/grokify/html-strip-tags-go"
+  packages = ["."]
+  revision = "fda376fed04166f97c4d8a367ad6f44f4136787e"
+
+[[projects]]
+  branch = "master"
   name = "github.com/kr/logfmt"
   packages = ["."]
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
@@ -125,13 +131,13 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "dc871a5d77e227f5bbf6545176ef3eeebf87e76e"
+  revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
   packages = ["."]
-  revision = "61caf9d3038e1af346dbf5c2e16f6678e1548364"
-  version = "v9.9.0"
+  revision = "b1f51f36f1c98cc97f777d6fc9d4b05eaa0cabb5"
+  version = "v9.9.1"
 
 [[projects]]
   branch = "v2"
@@ -142,6 +148,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e43d3e5bc8f108d499f7c94d1ce8b913d446739d599f6e20750d505b66022c4e"
+  inputs-digest = "8761160c28d49f59d596ddeab1838430174e1c0dc28f25e9d519ed3cdebaefbf"
   solver-name = "gps-cdcl"
   solver-version = 1
