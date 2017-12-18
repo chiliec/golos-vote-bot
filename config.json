@@ -14,7 +14,7 @@
   "group_id": -1001143551951,
   "group_link": "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
   "database_path": "./db/database.db",
-  "domains": ["golos.io", "golos.blog", "goldvoice.club"],
+  "domains": ["golos.io", "golos.blog", "goldvoice.club", "golosd.com", "golosdb.com"],
   "chain": "golos",
   "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"]
 }
