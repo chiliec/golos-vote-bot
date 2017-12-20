@@ -261,6 +261,11 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				break
 			}
 
+			if len(post.Body) < 200 { // TODO: вынести значение в настройки
+				msg.Text = "Что-то совсем мало текста, нечего тут читать..."
+				break
+			}
+
 			percent := 100
 
 			voteModel := models.Vote{
@@ -291,8 +296,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			if err != nil {
 				return err
 			}
-			textWithoutTags := strip.StripTags(post.Body)
-			go checkUniqueness(message, bot, textWithoutTags, config, voteModel, database)
+			go checkUniqueness(message, bot, post.Body, config, voteModel, database)
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -612,7 +616,9 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 		return
 	}
 
-	if len(text) < 200 {
+	text = strip.StripTags(text)
+
+	if len(text) < 200 { // TODO: вынести значение в настройки
 		return
 	}
 
@@ -625,7 +631,6 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 	}
 	maxSymbolCount := 2000
 	text = cut(text, maxSymbolCount)
-	// TODO: почистить текст от тегов и другого мусора
 
 	httpClient := http.Client{}
 	form := url.Values{}
@@ -714,17 +719,18 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 			if err != nil {
 				log.Println(err.Error())
 			}
-		}
-		random := func(min, max int) int {
-			rand.Seed(time.Now().Unix())
-			return rand.Intn(max-min) + min
-		}
-		imageNumber := random(1, 18)
-		report := fmt.Sprintf("[![Уникальность проверена через TEXT.RU](https://text.ru/image/get/%s/%d)](https://text.ru/antiplagiat/%s)",
-			uid.TextUid, imageNumber, uid.TextUid)
-		err = sendComment(config, voteModel.Author, voteModel.Permalink, report)
-		if err != nil {
-			log.Println(err.Error())
+		} else {
+			random := func(min, max int) int {
+				rand.Seed(time.Now().Unix())
+				return rand.Intn(max-min) + min
+			}
+			imageNumber := random(1, 18)
+			report := fmt.Sprintf("[![Уникальность проверена через TEXT.RU](https://text.ru/image/get/%s/%d)](https://text.ru/antiplagiat/%s)",
+				uid.TextUid, imageNumber, uid.TextUid)
+			err = sendComment(config, voteModel.Author, voteModel.Permalink, report)
+			if err != nil {
+				log.Println(err.Error())
+			}
 		}
 		// если дошли сюда, то выходим из цикла
 		break
