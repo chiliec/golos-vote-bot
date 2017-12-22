@@ -414,7 +414,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 		if models.GetLastResponse(database).UserID == userID {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Нельзя так часто голосовать",
+				Text:            "Нельзя голосовать два раза подряд",
 			}
 			bot.AnswerCallbackQuery(config)
 			return nil
