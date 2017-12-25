@@ -107,8 +107,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 	}
 
 	if update.Message != nil {
-		domainList := strings.Join(config.Domains, "|")
-		domainRegexp, err := regexp.Compile("https://(?:" + domainList + ")(?:[-a-zA-Z0-9@:%_+.~#?&//=]{2,256})?/@([-a-zA-Z0-9.]{2,256})/([-a-zA-Z0-9@:%_+.~?&=]{2,256})")
+		domainRegexp, err := helpers.GetDomainRegexp(config.Domains)
 		if err != nil {
 			return err
 		}
