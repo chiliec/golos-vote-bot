@@ -739,7 +739,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 func sendComment(config config.Config, author string, permalink string, text string) error {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	vote := golosClient.PC_Vote{Weight: 10 * 100}
+	vote := golosClient.PC_Vote{Weight: 100 * 100}
 	options := golosClient.PC_Options{Percent: 50}
 	err := golos.Comment(
 		config.Account,
