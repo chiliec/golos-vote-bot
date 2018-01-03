@@ -260,7 +260,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				break
 			}
 
-			if len(post.Body) < 200 { // TODO: вынести значение в настройки
+			if len(post.Body) < config.MinimumPostLength {
 				msg.Text = "Что-то совсем мало текста, нечего тут читать..."
 				break
 			}
@@ -617,7 +617,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 
 	text = strip.StripTags(text)
 
-	if len(text) < 200 { // TODO: вынести значение в настройки
+	if len(text) < config.MinimumPostLength {
 		return
 	}
 

@@ -17,6 +17,7 @@ type Config struct {
 	InitialUserRating      int      `json:"initial_user_rating"`
 	MaximumOpenedVotes     int      `json:"maximum_opened_votes"`
 	MaximumUserVotesPerDay int      `json:"maximum_user_votes_per_day"`
+	MinimumPostLength      int      `json:"minimum_post_length"`
 	Developer              string   `json:"developer"`
 	GroupID                int64    `json:"group_id"`
 	GroupLink              string   `json:"group_link"`

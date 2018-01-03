@@ -10,6 +10,7 @@
   "initial_user_rating": 10,
   "maximum_opened_votes": 3,
   "maximum_user_votes_per_day": 4,
+  "minimum_post_length": 500,
   "developer": "@babin",
   "group_id": -1001143551951,
   "group_link": "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
