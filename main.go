@@ -261,7 +261,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			}
 
 			if len(post.Body) < config.MinimumPostLength {
-				msg.Text = "Что-то совсем мало текста, нечего тут читать..."
+				msg.Text = "Слишком мало текста, в следующий раз не скупись на буквы"
 				break
 			}
 
@@ -331,7 +331,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						if err = referral.SetCompleted(database); err == nil {
 							_, err = models.GetCredentialByUserName(credential.UserName, database)
 							if err == sql.ErrNoRows {
-								go sendReferralFee(referral.Referrer, credential.UserName, config, bot, database)
+								go sendReferralFee(referral.Referrer, credential.UserName, config, bot)
 							}
 						}
 					}
@@ -828,11 +828,21 @@ func getInstantViewLink(author string, permalink string) string {
 	return "https://t.me/iv?url=https://goldvoice.club/" + "@" + author + "/" + permalink + "&rhash=70f46c6616076d"
 }
 
-func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI, database *sql.DB) {
+func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI) {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
+	accounts, err := golos.Rpc.Database.GetAccounts([]string{referral})
+	if err != nil {
+		log.Println("Не получили аккаунт " + referral)
+		return
+	}
+	var minPostCount int64 = 30
+	if accounts[0].PostCount.Int64() < minPostCount {
+		log.Printf("За новичка %s награды не будет, слишком мало постов", referral)
+		return
+	}
 	amount := fmt.Sprintf("%.3f GOLOS", config.ReferralFee)
-	err := golos.TransferToVesting(config.Account, referrer, amount)
+	err = golos.TransferToVesting(config.Account, referrer, amount)
 	err2 := golos.TransferToVesting(config.Account, referral, amount)
 	if err != nil {
 		log.Println(fmt.Sprintf("Не отправили силу голоса %s \nаккаунту %s", err.Error(), referrer))
@@ -854,6 +864,6 @@ func sendReferralFee(referrer string, referral string, config config.Config, bot
 	msg.ParseMode = "Markdown"
 	_, err = bot.Send(msg)
 	if err != nil {
-		log.Println("Не отправили сообщение: " + text)
+		log.Println("Не отправили сообщение: " + err.Error())
 	}
 }
