@@ -15,14 +15,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	golosClient "github.com/asuleymanov/golos-go/client"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/grokify/html-strip-tags-go"
 
-	"github.com/GolosTools/golos-vote-bot/config"
+	configuration "github.com/GolosTools/golos-vote-bot/config"
 	"github.com/GolosTools/golos-vote-bot/db"
 	"github.com/GolosTools/golos-vote-bot/helpers"
 	"github.com/GolosTools/golos-vote-bot/models"
@@ -35,28 +34,33 @@ const (
 	buttonInformation   = "⚓️Информация"
 )
 
-func main() {
-	var configuration config.Config
-	err := config.LoadConfiguration("./config.json", &configuration)
+var (
+	config   configuration.Config
+	database *sql.DB
+	bot      *tgbotapi.BotAPI
+)
+
+func init() {
+	err := configuration.LoadConfiguration("./config.json", &config)
 	if err != nil {
 		log.Panic(err)
 	}
-	err = config.LoadConfiguration("./config.local.json", &configuration)
+	err = configuration.LoadConfiguration("./config.local.json", &config)
 	if err != nil && !os.IsNotExist(err) {
 		log.Panic(err)
 	}
-	if configuration.TelegramToken == "write-your-telegram-token-here" {
+	if config.TelegramToken == "write-your-telegram-token-here" {
 		log.Panic("Токен для телеграма не введён")
 	}
 
-	golosClient.Key_List[configuration.Account] = golosClient.Keys{
-		PKey: configuration.PostingKey,
-		AKey: configuration.ActiveKey}
+	golosClient.Key_List[config.Account] = golosClient.Keys{
+		PKey: config.PostingKey,
+		AKey: config.ActiveKey}
 
-	database, err := db.InitDB(configuration.DatabasePath)
+	database, err = db.InitDB(config.DatabasePath)
 	if err != nil {
 		if err.Error() == "unable to open database file" {
-			path, err := filepath.Abs(configuration.DatabasePath)
+			path, err := filepath.Abs(config.DatabasePath)
 			if err != nil {
 				log.Panic(err)
 			}
@@ -64,16 +68,17 @@ func main() {
 		}
 		log.Panic(err)
 	}
-	defer database.Close()
 
-	bot, err := tgbotapi.NewBotAPI(configuration.TelegramToken)
+	bot, err = tgbotapi.NewBotAPI(config.TelegramToken)
 	if err != nil {
 		log.Panic(err)
 	}
-
 	bot.Debug = false
-
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+}
+
+func main() {
+	defer database.Close()
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -83,14 +88,14 @@ func main() {
 		log.Panic(err)
 	}
 	for update := range updates {
-		err := processMessage(bot, update, configuration, database)
+		err := processMessage(update)
 		if err != nil {
 			log.Println(err)
 		}
 	}
 }
 
-func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.Config, database *sql.DB) error {
+func processMessage(update tgbotapi.Update) error {
 	chatID, err := getChatID(update)
 	if err != nil {
 		return err
@@ -295,7 +300,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 			if err != nil {
 				return err
 			}
-			go checkUniqueness(message, bot, post.Body, config, voteModel, database)
+			go checkUniqueness(message, post.Body, voteModel)
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -331,7 +336,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 						if err = referral.SetCompleted(database); err == nil {
 							_, err = models.GetCredentialByUserName(credential.UserName, database)
 							if err == sql.ErrNoRows {
-								go sendReferralFee(referral.Referrer, credential.UserName, config, bot)
+								go sendReferralFee(referral.Referrer, credential.UserName)
 							}
 						}
 					}
@@ -472,7 +477,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 				return err
 			}
 			voteModel := models.GetVote(database, voteID)
-			err = verifyVotes(bot, voteModel, update, config, database)
+			err = verifyVotes(voteModel, update)
 			if err != nil {
 				return err
 			}
@@ -502,7 +507,7 @@ func processMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update, config config.
 	return nil
 }
 
-func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Update, config config.Config, database *sql.DB) error {
+func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 	chatID, err := getChatID(update)
 	if err != nil {
 		return err
@@ -555,8 +560,8 @@ func verifyVotes(bot *tgbotapi.BotAPI, voteModel models.Vote, update tgbotapi.Up
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
 			credential.IncrementRating(1, database)
-			successVotes := vote(voteModel, config, database)
-			msg.Text = fmt.Sprintf("Успешно проголосовала c %d аккаунтов", successVotes)
+			go vote(voteModel, chatID, messageID)
+			return nil
 		} else {
 			credential.DecrementRating(2*config.RequiredVotes, database)
 			rating, err := credential.GetRating(database)
@@ -609,7 +614,7 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 }
 
 // https://text.ru/api-check/manual
-func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string, config config.Config, voteModel models.Vote, database *sql.DB) {
+func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vote) {
 	token := config.TextRuToken
 	if len(config.TextRuToken) == 0 {
 		return
@@ -726,7 +731,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 			imageNumber := random(1, 18)
 			report := fmt.Sprintf("[![Уникальность проверена через TEXT.RU](https://text.ru/image/get/%s/%d)](https://text.ru/antiplagiat/%s)",
 				uid.TextUid, imageNumber, uid.TextUid)
-			err = sendComment(config, voteModel.Author, voteModel.Permalink, report)
+			err = sendComment(voteModel.Author, voteModel.Permalink, report)
 			if err != nil {
 				log.Println(err.Error())
 			}
@@ -736,7 +741,7 @@ func checkUniqueness(message tgbotapi.Message, bot *tgbotapi.BotAPI, text string
 	}
 }
 
-func sendComment(config config.Config, author string, permalink string, text string) error {
+func sendComment(author string, permalink string, text string) error {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
 	vote := golosClient.PC_Vote{Weight: 100 * 100}
@@ -751,11 +756,11 @@ func sendComment(config config.Config, author string, permalink string, text str
 	return err
 }
 
-func vote(vote models.Vote, config config.Config, database *sql.DB) int {
+func vote(vote models.Vote, chatID int64, messageID int) {
 	credentials, err := models.GetAllCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
-		return 0
+		return
 	}
 	for _, credential := range credentials {
 		if config.Account != credential.UserName {
@@ -763,25 +768,21 @@ func vote(vote models.Vote, config config.Config, database *sql.DB) int {
 		}
 	}
 	log.Printf("Загружено %d аккаунтов", len(credentials))
-
-	var errors []error
-	var wg sync.WaitGroup
-	wg.Add(len(credentials))
+	var votes []golosClient.ArrVote
 	for _, credential := range credentials {
-		go func(credential models.Credential) {
-			defer wg.Done()
-			weight := credential.Power * 100
-			golos := golosClient.NewApi(config.Rpc, config.Chain)
-			defer golos.Rpc.Close()
-			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
-			if err != nil {
-				log.Println("Ошибка при голосовании: " + err.Error())
-				errors = append(errors, err)
-			}
-		}(credential)
+		arrVote := golosClient.ArrVote{User: credential.UserName, Weight: credential.Power * 100}
+		votes = append(votes, arrVote)
 	}
-	wg.Wait()
-	return len(credentials) - len(errors)
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
+	defer golos.Rpc.Close()
+	err = golos.Multi_Vote(config.Account, vote.Author, vote.Permalink, votes)
+	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", len(votes))
+	if err != nil {
+		text = "Ошибка при голосовании: " + err.Error()
+	}
+	msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
+	msg.Text = text
+	bot.Send(msg)
 }
 
 func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
@@ -828,7 +829,7 @@ func getInstantViewLink(author string, permalink string) string {
 	return "https://t.me/iv?url=https://goldvoice.club/" + "@" + author + "/" + permalink + "&rhash=70f46c6616076d"
 }
 
-func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI) {
+func sendReferralFee(referrer string, referral string) {
 	if referrer == referral {
 		log.Printf("Пригласивший и приглашенный %s совпадают", referral)
 		return
@@ -840,7 +841,7 @@ func sendReferralFee(referrer string, referral string, config config.Config, bot
 		log.Println("Не получили аккаунт " + referral)
 		return
 	}
-	var minPostCount int64 = 30
+	const minPostCount int64 = 30
 	if accounts[0].PostCount.Int64() < minPostCount {
 		log.Printf("За новичка %s награды не будет, слишком мало постов", referral)
 		return
