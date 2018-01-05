@@ -829,6 +829,10 @@ func getInstantViewLink(author string, permalink string) string {
 }
 
 func sendReferralFee(referrer string, referral string, config config.Config, bot *tgbotapi.BotAPI) {
+	if referrer == referral {
+		log.Printf("Пригласивший и приглашенный %s совпадают", referral)
+		return
+	}
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
 	accounts, err := golos.Rpc.Database.GetAccounts([]string{referral})
