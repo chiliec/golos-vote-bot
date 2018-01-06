@@ -158,7 +158,7 @@ func processMessage(update tgbotapi.Update) error {
 						if newID < 0 && err == sql.ErrNoRows {
 							models.REFchangeUserID(database, oldID, newID)
 							models.CREDchangeUserID(database, oldID, newID)
-							msg.Text = "Done"
+							msg.Text = "Done "
 						}
 					}
 				}
