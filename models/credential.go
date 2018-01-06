@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"strconv"
+	"strings"
 )
 
 type Credential struct {
@@ -100,4 +102,25 @@ func IsActiveCredential(userID int, db *sql.DB) bool {
 		return false
 	}
 	return credential.Active && len(credential.UserName) > 0
+}
+
+func CREDchangeUserID(db *sql.DB, oldID int, newID int) error {
+	_, err := db.Exec("UPDATE credentials SET user_id = ? WHERE user_id = ?", newID, oldID)
+	return err
+}
+
+func GetTestCredentials(db *sql.DB) (result string, err error) {
+	rows, err := db.Query("SELECT user_id, user_name, power, rating, active FROM credentials WHERE user_id < 0")
+	if err != nil {
+		return result, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var credential Credential
+		err := rows.Scan(&credential.UserID, &credential.UserName, &credential.Power, &credential.Rating, &credential.Active)
+		if err == nil && credential.Active {
+			result = strings.Join(result,  strconv.Itoa(credential.UserID))
+		}
+	}
+	return result, err
 }
