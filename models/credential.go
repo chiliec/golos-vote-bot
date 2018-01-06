@@ -123,6 +123,6 @@ func GetTestCredentials(db *sql.DB) (result string, err error) {
 			ids = append(ids,  strconv.Itoa(credential.UserID))
 		}
 	}
-	result = strings.Join(ids, '==')
+	result = strings.Join(ids, '=')
 	return result, err
 }
