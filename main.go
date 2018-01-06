@@ -149,6 +149,40 @@ func processMessage(update tgbotapi.Update) error {
 						}
 					}
 				}
+			case "newtest":
+				if userID == config.tester {
+					if len(update.Message.CommandArguments()) > 0 {
+						newID, _ := strconv.Atoi(update.Message.CommandArguments())
+						oldID := userID
+						_, err := models.GetCredentialByUserID(newID, database)
+						if newID < 0 && err == sql.ErrNoRows {
+							models.REFchangeUserID(database, oldID, newID)
+							models.CREDchangeUserID(database, oldID, newID)
+							msg.Text = "Done"
+						}
+					}
+				}
+			case "switch":
+				if userID == config.tester {
+					if len(update.Message.CommandArguments()) > 0 {
+						newID, _ := strconv.Atoi(update.Message.CommandArguments())
+						oldID := userID
+						_, err := models.GetCredentialByUserID(newID, database)
+						if newID < 0 && err != sql.ErrNoRows {
+							models.REFchangeUserID(database, oldID, 0)
+							models.REFchangeUserID(database, newID, oldID)
+							models.REFchangeUserID(database, 0, newID)
+							models.CREDchangeUserID(database, oldID, 0)
+							models.CREDchangeUserID(database, newID, oldID)
+							models.CREDchangeUserID(database, 0, newID)
+							msg.Text = "Done"
+						}
+					}
+				}
+			case "info":
+				if userID == config.tester {
+					msg.Text, _ = database.Query("SELECT * FROM referrals WHERE user_id < 0")
+				}
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
