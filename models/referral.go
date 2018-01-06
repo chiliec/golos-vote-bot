@@ -39,7 +39,7 @@ func GetReferralByUserID(userID int, db *sql.DB) (referral Referral, err error) 
 	return referral, err
 }
 
-func changeUserID(db *sql.DB, oldID int, newID int) error {
+func REFchangeUserID(db *sql.DB, oldID int, newID int) error {
 	_, err := db.Exec("UPDATE referrals SET user_id = ? WHERE user_id = ?", newID, oldID)
 	return err
 }
