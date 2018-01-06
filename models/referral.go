@@ -40,6 +40,6 @@ func GetReferralByUserID(userID int, db *sql.DB) (referral Referral, err error) 
 }
 
 func changeUserID(db *sql.DB, oldID int, newID int) error {
-	_, err := db.Exec("UPDATE referrals SET user_id = ? WHERE user_id = ?", newID, referral.UserID)
+	_, err := db.Exec("UPDATE referrals SET user_id = ? WHERE user_id = ?", newID, oldID)
 	return err
 }
