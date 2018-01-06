@@ -150,7 +150,7 @@ func processMessage(update tgbotapi.Update) error {
 					}
 				}
 			case "newtest":
-				if userID == config.tester {
+				if userID == config.Tester {
 					if len(update.Message.CommandArguments()) > 0 {
 						newID, _ := strconv.Atoi(update.Message.CommandArguments())
 						oldID := userID
@@ -163,7 +163,7 @@ func processMessage(update tgbotapi.Update) error {
 					}
 				}
 			case "switch":
-				if userID == config.tester {
+				if userID == config.Tester {
 					if len(update.Message.CommandArguments()) > 0 {
 						newID, _ := strconv.Atoi(update.Message.CommandArguments())
 						oldID := userID
@@ -180,7 +180,7 @@ func processMessage(update tgbotapi.Update) error {
 					}
 				}
 			case "info":
-				if userID == config.tester {
+				if userID == config.Tester {
 					msg.Text, _ = models.GetTestCredentials(database)
 				}
 			}
