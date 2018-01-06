@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"strconv"
+	"fmt"
+	"strings"
 )
 
 type Credential struct {
