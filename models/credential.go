@@ -3,6 +3,7 @@ package models
 import (
 	"database/sql"
 	"errors"
+	"strconv"
 )
 
 type Credential struct {
@@ -117,7 +118,7 @@ func GetTestCredentials(db *sql.DB) (result string, err error) {
 		var credential Credential
 		err := rows.Scan(&credential.UserID, &credential.UserName, &credential.Power, &credential.Rating, &credential.Active)
 		if err == nil && credential.Active {
-			result = append(result, "\n" + credential.UserID)
+			result = strings.Join(result,  strconv.Itoa(credential.UserID))
 		}
 	}
 	return result, err
