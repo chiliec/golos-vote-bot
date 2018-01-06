@@ -101,3 +101,8 @@ func IsActiveCredential(userID int, db *sql.DB) bool {
 	}
 	return credential.Active && len(credential.UserName) > 0
 }
+
+func (credential Credential) changeUserID(db *sql.DB, newID int) error {
+	_, err := db.Exec("UPDATE referrals SET user_id = ? WHERE user_id = ?", newID, credential.UserID)
+	return err
+}
