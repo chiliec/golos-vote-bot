@@ -101,3 +101,8 @@ func IsActiveCredential(userID int, db *sql.DB) bool {
 	}
 	return credential.Active && len(credential.UserName) > 0
 }
+
+func CREDchangeUserID(db *sql.DB, oldID int, newID int) error {
+	_, err := db.Exec("UPDATE credentials SET user_id = ? WHERE user_id = ?", newID, oldID)
+	return err
+}
