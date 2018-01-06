@@ -152,9 +152,10 @@ func processMessage(update tgbotapi.Update) error {
 			case "newtest":
 				if userID == config.tester {
 					if len(update.Message.CommandArguments()) > 0 {
-						newID, err := strconv.Atoi(update.Message.CommandArguments())
+						newID, _ := strconv.Atoi(update.Message.CommandArguments())
 						oldID := userID
-						if newID < 0 {
+						_, err := models.GetCredentialByUserID(newID, database)
+						if newID < 0 err == sql.ErrNoRows {
 							models.REFchangeUserID(database, oldID, newID)
 							models.CREDchangeUserID(database, oldID, newID)
 							msg.Text = "Done"
@@ -164,9 +165,10 @@ func processMessage(update tgbotapi.Update) error {
 			case "switch":
 				if userID == config.tester {
 					if len(update.Message.CommandArguments()) > 0 {
-						newID, err := strconv.Atoi(update.Message.CommandArguments())
+						newID, _ := strconv.Atoi(update.Message.CommandArguments())
 						oldID := userID
-						if newID < 0 {
+						_, err := models.GetCredentialByUserID(newID, database)
+						if newID < 0 err != sql.ErrNoRows {
 							models.REFchangeUserID(database, oldID, 0)
 							models.REFchangeUserID(database, newID, oldID)
 							models.REFchangeUserID(database, 0, newID)
