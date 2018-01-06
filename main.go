@@ -93,11 +93,11 @@ func main() {
 }
 
 func processMessage(update tgbotapi.Update) error {
-	chatID, err := getChatID(update)
+	chatID, err := helpers.GetChatID(update)
 	if err != nil {
 		return err
 	}
-	userID, err := getUserID(update)
+	userID, err := helpers.GetUserID(update)
 	if err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func processMessage(update tgbotapi.Update) error {
 			}
 
 			if update.Message.Chat.ID != config.GroupID {
-				msg.Text = "Удобный просмотр с мобильных устройств:\n" + getInstantViewLink(author, permalink)
+				msg.Text = "Удобный просмотр с мобильных устройств:\n" + helpers.GetInstantViewLink(author, permalink)
 				msg.DisableWebPagePreview = false
 				bot.Send(msg)
 				return nil
@@ -289,8 +289,8 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			msg.Text = "Голосование за пост #открыто\n" + getInstantViewLink(author, permalink)
-			markup := getVoteMarkup(voteID, 0, 0)
+			msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
+			markup := helpers.GetVoteMarkup(voteID, 0, 0)
 			msg.ReplyMarkup = markup
 			msg.DisableWebPagePreview = false
 			message, err := bot.Send(msg)
@@ -525,15 +525,15 @@ func processMessage(update tgbotapi.Update) error {
 }
 
 func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
-	chatID, err := getChatID(update)
+	chatID, err := helpers.GetChatID(update)
 	if err != nil {
 		return err
 	}
-	userID, err := getUserID(update)
+	userID, err := helpers.GetUserID(update)
 	if err != nil {
 		return err
 	}
-	messageID, err := getMessageID(update)
+	messageID, err := helpers.GetMessageID(update)
 	if err != nil {
 		return err
 	}
@@ -552,7 +552,7 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 		}
 	}
 
-	markup := getVoteMarkup(voteModel.VoteID, positives, negatives)
+	markup := helpers.GetVoteMarkup(voteModel.VoteID, positives, negatives)
 	updateTextConfig := tgbotapi.EditMessageTextConfig{
 		BaseEdit: tgbotapi.BaseEdit{
 			ChatID:      chatID,
@@ -808,50 +808,6 @@ func vote(vote models.Vote, chatID int64, messageID int) {
 	if err != nil {
 		log.Println("Error: " + err.Error())
 	}
-}
-
-func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
-	stringVoteID := strconv.FormatInt(voteID, 10)
-	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍Лайк ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
-	badButton := tgbotapi.NewInlineKeyboardButtonData("👎Дизлайк ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
-	row := []tgbotapi.InlineKeyboardButton{badButton, goodButton}
-	markup := tgbotapi.InlineKeyboardMarkup{}
-	markup.InlineKeyboard = append(markup.InlineKeyboard, row)
-	return markup
-}
-
-func getChatID(update tgbotapi.Update) (int64, error) {
-	if update.Message != nil {
-		return update.Message.Chat.ID, nil
-	} else if update.CallbackQuery != nil {
-		return update.CallbackQuery.Message.Chat.ID, nil
-	} else {
-		return 0, errors.New("не получили ID чата")
-	}
-}
-
-func getUserID(update tgbotapi.Update) (int, error) {
-	if update.Message != nil {
-		return update.Message.From.ID, nil
-	} else if update.CallbackQuery != nil {
-		return update.CallbackQuery.From.ID, nil
-	} else {
-		return 0, errors.New("не получили ID пользователя")
-	}
-}
-
-func getMessageID(update tgbotapi.Update) (int, error) {
-	if update.Message != nil {
-		return update.Message.MessageID, nil
-	} else if update.CallbackQuery != nil {
-		return update.CallbackQuery.Message.MessageID, nil
-	} else {
-		return 0, errors.New("не получили ID сообщения")
-	}
-}
-
-func getInstantViewLink(author string, permalink string) string {
-	return "https://t.me/iv?url=https://goldvoice.club/" + "@" + author + "/" + permalink + "&rhash=70f46c6616076d"
 }
 
 func sendReferralFee(referrer string, referral string) {
