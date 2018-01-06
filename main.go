@@ -181,7 +181,7 @@ func processMessage(update tgbotapi.Update) error {
 				}
 			case "info":
 				if userID == config.tester {
-					msg.Text, _ = GetTestCredentials(database)
+					msg.Text, _ = models.GetTestCredentials(database)
 				}
 			}
 			state.Action = update.Message.Command()
