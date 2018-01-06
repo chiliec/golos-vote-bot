@@ -115,12 +115,14 @@ func GetTestCredentials(db *sql.DB) (result string, err error) {
 		return result, err
 	}
 	defer rows.Close()
+	var result []string
 	for rows.Next() {
 		var credential Credential
 		err := rows.Scan(&credential.UserID, &credential.UserName, &credential.Power, &credential.Rating, &credential.Active)
 		if err == nil && credential.Active {
-			result = strings.Join(result,  strconv.Itoa(credential.UserID))
+			result = append(result,  strconv.Itoa(credential.UserID))
 		}
 	}
+	result = strings.Join(result, '')
 	return result, err
 }
