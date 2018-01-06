@@ -577,7 +577,7 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
 			credential.IncrementRating(1, database)
-			go vote(voteModel, chatID, messageID)
+			go vote(voteModel, chatID, messageID, 0)
 			return nil
 		} else {
 			credential.DecrementRating(2*config.RequiredVotes, database)
@@ -773,7 +773,7 @@ func sendComment(author string, permalink string, text string) error {
 	return err
 }
 
-func vote(vote models.Vote, chatID int64, messageID int) {
+func vote(voteModel models.Vote, chatID int64, messageID, step int) {
 	credentials, err := models.GetAllCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
@@ -796,9 +796,15 @@ func vote(vote models.Vote, chatID int64, messageID int) {
 	}
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	err = golos.Multi_Vote(config.Account, vote.Author, vote.Permalink, votes)
+	err = golos.Multi_Vote(config.Account, voteModel.Author, voteModel.Permalink, votes)
 	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", len(votes))
 	if err != nil {
+		if step < 5 {
+			log.Printf("В %d раз пытаемся запустить голосование", step)
+			time.Sleep(time.Second * 3)
+			vote(voteModel, chatID, messageID, step+1)
+			return
+		}
 		log.Println(err.Error())
 		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s", config.Developer)
 	}
