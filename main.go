@@ -181,7 +181,7 @@ func processMessage(update tgbotapi.Update) error {
 				}
 			case "info":
 				if userID == config.tester {
-					msg.Text, _ = database.Query("SELECT * FROM referrals WHERE user_id < 0")
+					msg.Text, _ = GetTestCredentials(database)
 				}
 			}
 			state.Action = update.Message.Command()
