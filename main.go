@@ -796,15 +796,15 @@ func vote(voteModel models.Vote, chatID int64, messageID, step int) {
 	}
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	err = golos.Multi_Vote(config.Account, voteModel.Author, voteModel.Permalink, votes)
+	for i := 0; i < 5; i++ {
+		err = golos.Multi_Vote(config.Account, voteModel.Author, voteModel.Permalink, votes)
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second * 3)
+	}
 	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", len(votes))
 	if err != nil {
-		if step < 5 {
-			log.Printf("В %d раз пытаемся запустить голосование", step)
-			time.Sleep(time.Second * 3)
-			vote(voteModel, chatID, messageID, step+1)
-			return
-		}
 		log.Println(err.Error())
 		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s", config.Developer)
 	}
