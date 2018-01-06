@@ -266,7 +266,7 @@ func processMessage(update tgbotapi.Update) error {
 			}
 
 			if len(post.Body) < config.MinimumPostLength {
-				msg.Text = "Слишком мало текста, в следующий раз не скупись на буквы"
+				msg.Text = "Слишком мало текста, не скупись на буквы!"
 				break
 			}
 
@@ -782,27 +782,35 @@ func vote(vote models.Vote, chatID int64, messageID int) {
 		log.Println("Не смогли извлечь ключи из базы")
 		return
 	}
-	for _, credential := range credentials {
-		if config.Account != credential.UserName {
-			golosClient.Key_List[credential.UserName] = golosClient.Keys{PKey: config.PostingKey}
-		}
-	}
 	log.Printf("Загружено %d аккаунтов", len(credentials))
 	var votes []golosClient.ArrVote
 	for _, credential := range credentials {
 		arrVote := golosClient.ArrVote{User: credential.UserName, Weight: credential.Power * 100}
-		votes = append(votes, arrVote)
+		uniqueValue := true
+		for _, vote := range votes {
+			if vote.User == arrVote.User {
+				uniqueValue = false
+				break
+			}
+		}
+		if uniqueValue {
+			votes = append(votes, arrVote)
+		}
 	}
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
 	err = golos.Multi_Vote(config.Account, vote.Author, vote.Permalink, votes)
 	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", len(votes))
 	if err != nil {
-		text = "Ошибка при голосовании: " + err.Error()
+		log.Println(err.Error())
+		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s", config.Developer)
 	}
 	msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 	msg.Text = text
-	bot.Send(msg)
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Println("Error: " + err.Error())
+	}
 }
 
 func getVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
