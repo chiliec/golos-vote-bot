@@ -40,7 +40,7 @@ var (
 	bot      *tgbotapi.BotAPI
 )
 
-func init() {
+func main() {
 	err := configuration.LoadConfiguration("./config.json", &config)
 	if err != nil {
 		log.Panic(err)
@@ -68,6 +68,7 @@ func init() {
 		}
 		log.Panic(err)
 	}
+	defer database.Close()
 
 	bot, err = tgbotapi.NewBotAPI(config.TelegramToken)
 	if err != nil {
@@ -75,10 +76,6 @@ func init() {
 	}
 	bot.Debug = false
 	log.Printf("Authorized on account %s", bot.Self.UserName)
-}
-
-func main() {
-	defer database.Close()
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
