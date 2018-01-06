@@ -370,16 +370,36 @@ func processMessage(update tgbotapi.Update) error {
 					msg.Text = "Сначала делегируй мне права кнопкой " + buttonAddKey
 					break
 				}
+
 				credential, err := models.GetCredentialByUserID(userID, database)
 				if err != nil {
 					return err
 				}
-				err = credential.UpdatePower(value, database)
+
+				golos := golosClient.NewApi(config.Rpc, config.Chain)
+				defer golos.Rpc.Close()
+
+				accounts, err := golos.Rpc.Database.GetAccounts([]string{credential.UserName})
 				if err != nil {
 					return err
 				}
-				msg.Text = fmt.Sprintf("Предоставленная мне в распоряжение сила Голоса "+
-					"для аккаунта *%s* теперь равна *%d%%*", credential.UserName, value)
+
+				voteWeightThreshold := 1.0 * 1000.0 * 1000.0
+				vestingSharesPreparedString := strings.Split(accounts[0].VestingShares, " ")[0]
+				vestingShares, err := strconv.ParseFloat(vestingSharesPreparedString, 64)
+				if err != nil {
+					return err
+				}
+				if vestingShares > voteWeightThreshold {
+					err = credential.UpdatePower(value, database)
+					if err != nil {
+						return err
+					}
+					msg.Text = fmt.Sprintf("Предоставленная мне в распоряжение сила Голоса "+
+						"для аккаунта *%s* теперь равна *%d%%*", credential.UserName, value)
+				} else {
+					msg.Text = "У тебя пока слишком маленькая Сила Голоса для этого"
+				}
 				state.Action = "updatedPower"
 			}
 		default:
