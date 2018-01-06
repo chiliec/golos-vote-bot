@@ -17,5 +17,6 @@
   "database_path": "./db/database.db",
   "domains": ["golos.io", "golos.blog", "goldvoice.club", "golosd.com", "golosdb.com", "mapala.net", "newbie.goloses.ru"],
   "chain": "golos",
-  "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"]
+  "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"],
+  "tester": "userID"
 }
