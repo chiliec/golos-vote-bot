@@ -840,6 +840,7 @@ func vote(voteModel models.Vote, chatID int64, messageID, step int) {
 			break
 		}
 		time.Sleep(time.Second * 60)
+		golos = golosClient.NewApi(config.Rpc, config.Chain)
 	}
 	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", len(votes))
 	if err != nil {
