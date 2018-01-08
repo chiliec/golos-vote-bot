@@ -6,9 +6,6 @@ import (
 	"log"
 	"strings"
 
-	// RPC
-	"github.com/asuleymanov/golos-go/client/functions"
-
 	// Vendor
 	"github.com/pkg/errors"
 )
@@ -128,8 +125,6 @@ func (api *Client) Verify_Delegate_Posting_Key_Sign(username string, arr []strin
 		log.Println(errors.Wrap(err, "Error Get Dynamic Global Properties"))
 		return nil
 	}
-	totalVestingShares := props.TotalVestingShares
-	maxVirtualBandwidth := props.MaxVirtualBandwidth
 
 	acc, err := api.Rpc.Database.GetAccounts(arr)
 	if err != nil {
@@ -143,7 +138,7 @@ func (api *Client) Verify_Delegate_Posting_Key_Sign(username string, arr []strin
 			if val.VestingShares < 0 {
 				continue
 			}
-			if val.VestingShares * maxVirtualBandwidth < val.AverageBandwidth * totalVestingShares {
+			if val.VestingShares * props.MaxVirtualBandwidth < val.AverageBandwidth * props.TotalVestingShares {
 				continue
 			}
 			for _, v := range val.Posting.AccountAuths {
