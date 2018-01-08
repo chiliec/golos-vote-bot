@@ -808,6 +808,10 @@ func sendComment(author string, permalink string, text string) error {
 }
 
 func vote(voteModel models.Vote, chatID int64, messageID, step int) {
+	if voteModel.Author == "" || voteModel.Permalink == "" {
+		log.Println("Автор или ссылка пустая (!)")
+		return
+	}
 	credentials, err := models.GetAllCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
@@ -830,12 +834,12 @@ func vote(voteModel models.Vote, chatID int64, messageID, step int) {
 	}
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 20; i++ {
 		err = golos.Multi_Vote(config.Account, voteModel.Author, voteModel.Permalink, votes)
 		if err == nil {
 			break
 		}
-		time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 60)
 	}
 	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", len(votes))
 	if err != nil {
