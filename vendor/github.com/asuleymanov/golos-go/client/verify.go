@@ -6,6 +6,9 @@ import (
 	"log"
 	"strings"
 
+	// RPC
+	"github.com/asuleymanov/golos-go/client/functions"
+
 	// Vendor
 	"github.com/pkg/errors"
 )
@@ -120,12 +123,29 @@ func (api *Client) Verify_Post(author, permlink string) bool {
 func (api *Client) Verify_Delegate_Posting_Key_Sign(username string, arr []string) []string {
 	var truearr []string
 
+	props, err := api.Rpc.Database.GetDynamicGlobalProperties()
+	if err != nil {
+		log.Println(errors.Wrap(err, "Error Get Dynamic Global Properties"))
+		return nil
+	}
+	totalVestingShares := props.TotalVestingShares
+	maxVirtualBandwidth := props.MaxVirtualBandwidth
+
 	acc, err := api.Rpc.Database.GetAccounts(arr)
 	if err != nil {
 		log.Println(errors.Wrapf(err, "Error Verify Delegate Vote Sign: "))
 		return nil
 	} else {
 		for _, val := range acc {
+			if !val.CanVote {
+				continue
+			}
+			if val.VestingShares < 0 {
+				continue
+			}
+			if val.VestingShares * maxVirtualBandwidth < val.AverageBandwidth * totalVestingShares {
+				continue
+			}
 			for _, v := range val.Posting.AccountAuths {
 				l := strings.Split(strings.Replace(strings.Replace(fmt.Sprintf("%v", v), "[", "", -1), "]", "", -1), " ")[0]
 				if l == username {
