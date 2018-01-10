@@ -34,6 +34,7 @@ func TestLoadConfiguration(t *testing.T) {
 		Tester:                 0,
 		Repository:	        "https://github.com/GolosTools/golos-vote-bot",
 		IgnoreVP:		true,
+		BannedTags:		[]string{"test", "test1"},
 	}
 	if !reflect.DeepEqual(defaultConfig, config) {
 		t.Error("Конфиги не совпадают")
