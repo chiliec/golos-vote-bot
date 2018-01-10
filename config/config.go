@@ -25,9 +25,9 @@ type Config struct {
 	Domains                []string `json:"domains"`
 	Chain                  string   `json:"chain"`
 	Rpc                    []string `json:"rpc"`
-	Tester		       int	`json:"tester"`
-	Repository	       string 	`json:"repository"`
-	IgnoreVP	       bool  	`json:"ignore_vp"`
+	Tester		             int	    `json:"tester"`
+	Repository	           string 	`json:"repository"`
+	IgnoreVP	             bool    	`json:"ignore_vp"`
 }
 
 func LoadConfiguration(file string, config *Config) error {
