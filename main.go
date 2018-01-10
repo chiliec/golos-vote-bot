@@ -246,6 +246,8 @@ func processMessage(update tgbotapi.Update) error {
 			if post.Author != author || post.Permlink != permalink {
 				return nil
 			}
+			
+			tags := post.jsonMetadata
 
 			if update.Message.Chat.ID != config.GroupID {
 				msg.Text = "Удобный просмотр с мобильных устройств:\n" + helpers.GetInstantViewLink(author, permalink)
