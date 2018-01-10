@@ -27,6 +27,7 @@ type Config struct {
 	Rpc                    []string `json:"rpc"`
 	Tester		       int	`json:"tester"`
 	Repository	       string 	`json:"repository"`
+	IgnoreVP	       bool  	`json:"ignore_vp"`
 }
 
 func LoadConfiguration(file string, config *Config) error {
