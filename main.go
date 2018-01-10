@@ -247,7 +247,15 @@ func processMessage(update tgbotapi.Update) error {
 				return nil
 			}
 			
-			tags := post.jsonMetadata
+			tags := post.jsonMetadata.Tags
+			for _, postTag := range tags {
+				for _, bannedTag := range config.BannedTags {
+					if postTag == bannedTag {
+						msg.Text = "Нельзя предлагать посты с тегом \"" + postTag + "\""
+						break
+					}
+				}
+			}
 
 			if update.Message.Chat.ID != config.GroupID {
 				msg.Text = "Удобный просмотр с мобильных устройств:\n" + helpers.GetInstantViewLink(author, permalink)
