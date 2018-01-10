@@ -26,6 +26,7 @@ type Config struct {
 	Chain                  string   `json:"chain"`
 	Rpc                    []string `json:"rpc"`
 	Tester		       int	`json:"tester"`
+	Repository	       string 	`json:"repository"`
 }
 
 func LoadConfiguration(file string, config *Config) error {

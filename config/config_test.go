@@ -22,8 +22,8 @@ func TestLoadConfiguration(t *testing.T) {
 		RequiredVotes:          4,
 		InitialUserRating:      10,
 		MaximumOpenedVotes:     3,
-		MaximumUserVotesPerDay: 4,
-		MinimumPostLength:      500,
+		MaximumUserVotesPerDay: 2,
+		MinimumPostLength:      1000,
 		Developer:              "@babin",
 		GroupID:                -1001143551951,
 		GroupLink:              "https://t.me/joinchat/AlKeQUQpN8-9oShtaTcY7Q",
@@ -32,6 +32,7 @@ func TestLoadConfiguration(t *testing.T) {
 		Chain:                  "golos",
 		Rpc:                    []string{"wss://ws.golos.io", "wss://api.golos.cf"},
 		Tester:                 0,
+		Repository:	        "https://github.com/worthless-man/golos-vote-bot",
 	}
 	if !reflect.DeepEqual(defaultConfig, config) {
 		t.Error("Конфиги не совпадают")
