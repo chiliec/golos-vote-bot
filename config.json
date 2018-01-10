@@ -19,5 +19,6 @@
   "chain": "golos",
   "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"],
   "tester": 0,
-  "repository": "https://github.com/GolosTools/golos-vote-bot"
+  "repository": "https://github.com/GolosTools/golos-vote-bot",
+  "ignore_vp": true
 }
