@@ -246,16 +246,6 @@ func processMessage(update tgbotapi.Update) error {
 			if post.Author != author || post.Permlink != permalink {
 				return nil
 			}
-			
-			tags := post.JsonMetadata.Tags
-			for _, bannedTag := range config.BannedTags {
-				for _, postTag := range tags {
-					if postTag == bannedTag {
-						msg.Text = "Нельзя предлагать посты с тегом " + postTag
-						break
-					}
-				}
-			}
 
 			if update.Message.Chat.ID != config.GroupID {
 				msg.Text = "Удобный просмотр с мобильных устройств:\n" + helpers.GetInstantViewLink(author, permalink)
@@ -282,6 +272,22 @@ func processMessage(update tgbotapi.Update) error {
 			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
 				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся? Ищи по тегу #открыто"
 				break
+			}
+			
+			if config.Cansorship {
+				tags := post.JsonMetadata.Tags
+				for _, bannedTag := range config.BannedTags {
+					for _, postTag := range tags {
+						if postTag == bannedTag {
+							incudesBannedTag := true
+							msg.Text = "Нельзя предлагать посты с тегом " + postTag
+						}
+					}
+				
+				}	
+				if includesBannedTag {
+					break
+				}
 			}
 
 			isActive := models.IsActiveCredential(userID, database)
