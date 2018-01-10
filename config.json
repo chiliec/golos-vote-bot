@@ -18,5 +18,6 @@
   "domains": ["golos.io", "golos.blog", "goldvoice.club", "golosd.com", "golosdb.com", "mapala.net", "newbie.goloses.ru"],
   "chain": "golos",
   "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"],
-  "tester": 0
+  "tester": 0,
+  "repository": "https://github.com/GolosTools/golos-vote-bot"
 }
