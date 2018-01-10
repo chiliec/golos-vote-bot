@@ -291,7 +291,7 @@ func processMessage(update tgbotapi.Update) error {
 				break
 			}
 
-			if helpers.IsVoxPopuli(author) {
+			if helpers.IsVoxPopuli(author) && config.IgnoreVP {
 				msg.Text = "Сообщества vox-populi могут сами себя поддержать"
 				break
 			}
