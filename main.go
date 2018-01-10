@@ -279,7 +279,7 @@ func processMessage(update tgbotapi.Update) error {
 				for _, bannedTag := range config.BannedTags {
 					for _, postTag := range tags {
 						if postTag == bannedTag {
-							incudesBannedTag := true
+							includesBannedTag := true
 							msg.Text = "Нельзя предлагать посты с тегом " + postTag
 						}
 					}
