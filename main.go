@@ -126,11 +126,11 @@ func processMessage(update tgbotapi.Update) error {
 				}
 				msg.Text = fmt.Sprintf("Привет, %s! \n\n"+
 					"Я — бот для коллективного кураторства в [социальной блокчейн-сети \"Голос\"](https://golos.io).\n\n"+
-					"Мой код полностью открыт и находится здесь: https://github.com/GolosTools/golos-vote-bot\n\n"+
+					"Мой код полностью открыт и находится здесь: %s\n\n"+
 					"Предлагаю начать с нажатия кнопки \""+buttonAddKey+"\", "+
 					"после чего я дам ссылку на группу для предложения постов.\n\n"+
 					"По любым вопросам пиши моему хозяину — %s",
-					username, config.Developer)
+					username, config.Repository, config.Developer)
 				// save referral if exists
 				if len(update.Message.CommandArguments()) > 0 {
 					_, err := models.GetCredentialByUserID(userID, database)
