@@ -247,7 +247,7 @@ func processMessage(update tgbotapi.Update) error {
 				return nil
 			}
 			
-			tags := post.jsonMetadata.Tags
+			tags := post.JsonMetadata.Tags
 			for _, postTag := range tags {
 				for _, bannedTag := range config.BannedTags {
 					if postTag == bannedTag {
