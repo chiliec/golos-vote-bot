@@ -274,7 +274,7 @@ func processMessage(update tgbotapi.Update) error {
 				break
 			}
 			
-			if config.Cansorship {
+			if config.Censorship {
 				tags := post.JsonMetadata.Tags
 				for _, bannedTag := range config.BannedTags {
 					for _, postTag := range tags {
