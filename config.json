@@ -20,5 +20,7 @@
   "rpc": ["wss://ws.golos.io", "wss://api.golos.cf"],
   "tester": 0,
   "repository": "https://github.com/GolosTools/golos-vote-bot",
-  "ignore_vp": true
+  "ignore_vp": true,
+  "banned_tags": ["test", "test1"],
+  "censorship": false
 }
