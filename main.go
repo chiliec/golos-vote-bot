@@ -829,7 +829,7 @@ func vote(voteModel models.Vote, chatID int64, messageID, step int) {
 		log.Println("Автор или ссылка пустая (!)")
 		return
 	}
-	credentials, err := models.GetAllCredentials(database)
+	credentials, err := models.GetAllActiveCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
 		return
@@ -856,6 +856,7 @@ func vote(voteModel models.Vote, chatID int64, messageID, step int) {
 		if err == nil {
 			break
 		}
+		log.Println(err.Error())
 		time.Sleep(time.Second * 60)
 		golos = golosClient.NewApi(config.Rpc, config.Chain)
 	}

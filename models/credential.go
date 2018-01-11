@@ -74,7 +74,7 @@ func GetCredentialByUserName(userName string, db *sql.DB) (credential Credential
 	return credential, err
 }
 
-func GetAllCredentials(db *sql.DB) (credentials []Credential, err error) {
+func GetAllActiveCredentials(db *sql.DB) (credentials []Credential, err error) {
 	rows, err := db.Query("SELECT user_id, user_name, power, rating, active FROM credentials")
 	if err != nil {
 		return credentials, err
