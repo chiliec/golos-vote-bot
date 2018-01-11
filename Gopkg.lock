@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/asuleymanov/golos-go"
   packages = [".","apis/database","apis/follow","apis/login","apis/market","apis/networkbroadcast","client","encoding/transaction","encoding/wif","interfaces","internal/rpc","rfc6979","transactions","translit","transports/websocket","types"]
-  revision = "bed737295351d29981f34a72c142275d32f09821"
+  revision = "a93c9147e9d8bf79c129df50e0b50bdda35f0c7d"
 
 [[projects]]
   branch = "master"
@@ -56,10 +56,10 @@
   version = "v1.7.0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/go-telegram-bot-api/telegram-bot-api"
   packages = ["."]
-  revision = "2022d04b94f50056a09962b1ac81cdd821d20a55"
-  version = "v4.6.1"
+  revision = "6f2d0224760e2b07def17a175ee56e834a4415b2"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -118,26 +118,26 @@
 [[projects]]
   name = "github.com/tendermint/tmlibs"
   packages = ["common","log"]
-  revision = "bfcc0217f120d3bee6730ba0789d2eb72fc2e889"
-  version = "v0.5.0"
+  revision = "91b4b534ad78e442192c8175db92a06a51064064"
+  version = "v0.6.0"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["nacl/secretbox","openpgp/armor","openpgp/errors","poly1305","ripemd160","salsa20/salsa"]
-  revision = "94eea52f7b742c7cbe0b03b22f0c4c8631ece122"
+  revision = "5f55bce93ad2c89f411e009659bb1fd83da36e7b"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "d866cfc389cec985d6fda2859936a575a55a3ab6"
+  revision = "ab555f366c4508dbe0802550b1b20c46c5c18aa0"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
   packages = ["."]
-  revision = "b1f51f36f1c98cc97f777d6fc9d4b05eaa0cabb5"
-  version = "v9.9.1"
+  revision = "230db62e071d40171640c9deb875d46a3858d9dd"
+  version = "v9.9.2"
 
 [[projects]]
   branch = "v2"

@@ -273,7 +273,7 @@ func processMessage(update tgbotapi.Update) error {
 				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся? Ищи по тегу #открыто"
 				break
 			}
-			
+
 			if config.Censorship {
 				tags := post.JsonMetadata.Tags
 				includesBannedTag := false
@@ -284,8 +284,8 @@ func processMessage(update tgbotapi.Update) error {
 							msg.Text = "Нельзя предлагать посты с тегом " + postTag
 						}
 					}
-				
-				}	
+
+				}
 				if includesBannedTag {
 					break
 				}

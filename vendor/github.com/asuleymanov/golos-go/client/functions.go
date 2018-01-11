@@ -4,6 +4,7 @@ import (
 	// Stdlib
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	// Vendor
@@ -45,24 +46,11 @@ func (api *Client) Vote(user_name, author_name, permlink string, weight int) err
 
 func (api *Client) Multi_Vote(username, author, permlink string, arrvote []ArrVote) error {
 	var trx []types.Operation
-	var arrstr, arrtmp []string
 	var arrvotes []ArrVote
 
 	for _, v := range arrvote {
-		arrstr = append(arrstr, v.User)
-	}
-	arrtmp = api.Verify_Delegate_Posting_Key_Sign(username, arrstr)
-	if len(arrtmp) == 0 {
-		return errors.New("Error Multi_Vote : To perform this operation, the signature rights must be delegated.")
-	} else {
-		for _, v := range arrtmp {
-			for _, val := range arrvote {
-				if v == val.User {
-					if !api.Verify_Voter(author, permlink, val.User) {
-						arrvotes = append(arrvotes, val)
-					}
-				}
-			}
+		if api.Verify_Delegate_Posting_Key_Sign(username, v.User) && !api.Verify_Voter(author, permlink, v.User) {
+			arrvotes = append(arrvotes, v)
 		}
 	}
 
@@ -84,7 +72,7 @@ func (api *Client) Multi_Vote(username, author, permlink string, arrvote []ArrVo
 	if err != nil {
 		return errors.Wrapf(err, "Error Multi_Vote: ")
 	} else {
-		log.Println("[Multi_Vote] Block -> ", resp.BlockNum, " From user -> ", username)
+		log.Println("[Multi_Vote] Block -> ", resp.BlockNum, " User/Permlink -> ", author, "/", permlink)
 		return nil
 	}
 }
@@ -94,6 +82,7 @@ func (api *Client) Comment(user_name, author_name, ppermlink, body string, v *PC
 
 	times, _ := strconv.Unquote(time.Now().Add(30 * time.Second).UTC().Format(fdt))
 	permlink := "re-" + author_name + "-" + ppermlink + "-" + times
+	permlink = strings.Replace(permlink, ".", "-", -1)
 
 	tx := &types.CommentOperation{
 		ParentAuthor:   author_name,
@@ -270,7 +259,7 @@ func (api *Client) Follow(follower, following string) error {
 	trx = append(trx, tx)
 	resp, err := api.Send_Trx(follower, trx)
 	if err != nil {
-		return errors.Wrapf(err, "Error Reblog: ")
+		return errors.Wrapf(err, "Error Follow: ")
 	} else {
 		log.Println("[Follow] Block -> ", resp.BlockNum, " Follower user -> ", follower, " Following user -> ", following)
 		return nil
@@ -291,7 +280,7 @@ func (api *Client) Unfollow(follower, following string) error {
 	trx = append(trx, tx)
 	resp, err := api.Send_Trx(follower, trx)
 	if err != nil {
-		return errors.Wrapf(err, "Error Reblog: ")
+		return errors.Wrapf(err, "Error Unfollow: ")
 	} else {
 		log.Println("[Unfollow] Block -> ", resp.BlockNum, " Unfollower user -> ", follower, " Unfollowing user -> ", following)
 		return nil
@@ -312,7 +301,7 @@ func (api *Client) Ignore(follower, following string) error {
 	trx = append(trx, tx)
 	resp, err := api.Send_Trx(follower, trx)
 	if err != nil {
-		return errors.Wrapf(err, "Error Reblog: ")
+		return errors.Wrapf(err, "Error Ignore: ")
 	} else {
 		log.Println("[Ignore] Block -> ", resp.BlockNum, " Ignore user -> ", follower, " Ignoring user -> ", following)
 		return nil
@@ -333,7 +322,7 @@ func (api *Client) Notice(follower, following string) error {
 	trx = append(trx, tx)
 	resp, err := api.Send_Trx(follower, trx)
 	if err != nil {
-		return errors.Wrapf(err, "Error Reblog: ")
+		return errors.Wrapf(err, "Error Notice: ")
 	} else {
 		log.Println("[Notice] Block -> ", resp.BlockNum, " Notice user -> ", follower, " Noticing user -> ", following)
 		return nil
@@ -344,7 +333,7 @@ func (api *Client) Reblog(user_name, author_name, permlink string) error {
 	if api.Verify_Reblogs(author_name, permlink, user_name) {
 		return errors.New("The user already did repost")
 	}
-	json_string := "[\"reblog\",{\"account\":\"" + user_name + "\",\"author\":\"" + author_name + "\",\"permlink\":\"" + permlink + "\"]"
+	json_string := "[\"reblog\",{\"account\":\"" + user_name + "\",\"author\":\"" + author_name + "\",\"permlink\":\"" + permlink + "\"}]"
 	var trx []types.Operation
 
 	tx := &types.CustomJSONOperation{

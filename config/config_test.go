@@ -32,10 +32,10 @@ func TestLoadConfiguration(t *testing.T) {
 		Chain:                  "golos",
 		Rpc:                    []string{"wss://ws.golos.io", "wss://api.golos.cf"},
 		Tester:                 0,
-		Repository:	        "https://github.com/GolosTools/golos-vote-bot",
-		IgnoreVP:		true,
-		BannedTags:		[]string{"test", "test1"},
-		Censorship: 		false,
+		Repository:             "https://github.com/GolosTools/golos-vote-bot",
+		IgnoreVP:               true,
+		BannedTags:             []string{"test", "test1"},
+		Censorship:             false,
 	}
 	if !reflect.DeepEqual(defaultConfig, config) {
 		t.Error("Конфиги не совпадают")
