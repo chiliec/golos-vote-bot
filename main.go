@@ -139,10 +139,14 @@ func processMessage(update tgbotapi.Update) error {
 						if err == nil {
 							// TODO: проверить существование этого юзера
 							referrer := string(decodedString)
-							referral := models.Referral{UserID: userID, Referrer: referrer, Completed: false}
-							_, err = referral.Save(database)
-							if err != nil {
-								log.Println("не сохранили реферала: " + err.Error())
+							if !models.IsReferrerExists(referrer, database) {
+								referral := models.Referral{UserID: userID, Referrer: referrer, Completed: false}
+								_, err = referral.Save(database)
+								if err != nil {
+									log.Println("не сохранили реферала: " + err.Error())
+								}
+							} else {
+								log.Println("Реферал уже привлекался ранее")
 							}
 						} else {
 							log.Printf("не смогли раскодировать строку %s", update.Message.CommandArguments())
