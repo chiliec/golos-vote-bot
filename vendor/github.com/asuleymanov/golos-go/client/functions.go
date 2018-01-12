@@ -49,7 +49,7 @@ func (api *Client) Multi_Vote(username, author, permlink string, arrvote []ArrVo
 	var arrvotes []ArrVote
 
 	for _, v := range arrvote {
-		if api.Verify_Delegate_Posting_Key_Sign(username, v.User) && !api.Verify_Voter(author, permlink, v.User) {
+		if api.Verify_Delegate_Posting_Key_Sign(v.User, username) && !api.Verify_Voter(author, permlink, v.User) {
 			arrvotes = append(arrvotes, v)
 		}
 	}

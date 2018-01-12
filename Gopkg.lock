@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/asuleymanov/golos-go"
   packages = [".","apis/database","apis/follow","apis/login","apis/market","apis/networkbroadcast","client","encoding/transaction","encoding/wif","interfaces","internal/rpc","rfc6979","transactions","translit","transports/websocket","types"]
-  revision = "a93c9147e9d8bf79c129df50e0b50bdda35f0c7d"
+  revision = "4dda407396aac8b2756ddf530b40456625185ec0"
 
 [[projects]]
   branch = "master"
@@ -59,7 +59,7 @@
   branch = "master"
   name = "github.com/go-telegram-bot-api/telegram-bot-api"
   packages = ["."]
-  revision = "6f2d0224760e2b07def17a175ee56e834a4415b2"
+  revision = "af15ab1ca783ca2dcf56f087587f1d4f48185c0b"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -131,7 +131,7 @@
   branch = "master"
   name = "golang.org/x/net"
   packages = ["context"]
-  revision = "ab555f366c4508dbe0802550b1b20c46c5c18aa0"
+  revision = "5ccada7d0a7ba9aeb5d3aca8d3501b4c2a509fec"
 
 [[projects]]
   name = "gopkg.in/go-playground/validator.v9"
