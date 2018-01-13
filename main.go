@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	golosClient "github.com/asuleymanov/golos-go/client"
@@ -632,7 +633,7 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
 			credential.IncrementRating(1, database)
-			go vote(voteModel, chatID, messageID, 0)
+			go vote(voteModel, chatID, messageID)
 			return nil
 		} else {
 			credential.DecrementRating(2*config.RequiredVotes, database)
@@ -828,54 +829,47 @@ func sendComment(author string, permalink string, text string) error {
 	return err
 }
 
-func vote(voteModel models.Vote, chatID int64, messageID, step int) {
-	if voteModel.Author == "" || voteModel.Permalink == "" {
-		log.Println("Автор или ссылка пустая (!)")
-		return
-	}
+func vote(voteModel models.Vote, chatID int64, messageID int) {
 	credentials, err := models.GetAllActiveCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
 		return
 	}
-	log.Printf("Загружено %d аккаунтов", len(credentials))
-	var votes []golosClient.ArrVote
 	for _, credential := range credentials {
-		arrVote := golosClient.ArrVote{User: credential.UserName, Weight: credential.Power * 100}
-		uniqueValue := true
-		for _, vote := range votes {
-			if vote.User == arrVote.User {
-				uniqueValue = false
-				break
+		if config.Account != credential.UserName {
+			golosClient.Key_List[credential.UserName] = golosClient.Keys{PKey: config.PostingKey}
+		}
+	}
+	log.Printf("Голосую за пост %s/%s, загружено %d аккаунтов", voteModel.Author, voteModel.Permalink, len(credentials))
+	var errors []error
+	var wg sync.WaitGroup
+	wg.Add(len(credentials))
+	for _, credential := range credentials {
+		go func(credential models.Credential) {
+			defer wg.Done()
+			weight := credential.Power * 100
+			golos := golosClient.NewApi(config.Rpc, config.Chain)
+			defer golos.Rpc.Close()
+			err := golos.Vote(credential.UserName, voteModel.Author, voteModel.Permalink, weight)
+			if err != nil {
+				log.Println("Ошибка при голосовании: " + err.Error())
+				errors = append(errors, err)
 			}
-		}
-		if uniqueValue {
-			votes = append(votes, arrVote)
-		}
+		}(credential)
 	}
-	golos := golosClient.NewApi(config.Rpc, config.Chain)
-	defer golos.Rpc.Close()
-	minVotePowerPercent := 70
-	var votesCount int
-	for i := 0; i < 20; i++ {
-		votesCount, err = golos.Multi_Vote(config.Account, voteModel.Author, voteModel.Permalink, votes, minVotePowerPercent)
-		if err == nil {
-			break
-		}
-		log.Println(err.Error())
-		time.Sleep(time.Second * 60)
-		golos = golosClient.NewApi(config.Rpc, config.Chain)
-	}
-	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", votesCount)
+	wg.Wait()
+	successVotesCount := len(credentials) - len(errors)
+	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", successVotesCount)
 	if err != nil {
 		log.Println(err.Error())
 		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s", config.Developer)
 	}
+	log.Println(text)
 	msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 	msg.Text = text
 	_, err = bot.Send(msg)
 	if err != nil {
-		log.Println("Error: " + err.Error())
+		log.Println(err.Error())
 	}
 }
 
