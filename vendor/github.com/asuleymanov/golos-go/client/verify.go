@@ -153,3 +153,15 @@ func (api *Client) Verify_First_Post(username string) bool {
 		return false
 	}
 }
+
+func (api *Client) Verify_User(username string) bool {
+	acc, err := api.Rpc.Database.GetAccounts([]string{username})
+	if err != nil {
+		log.Println(errors.Wrapf(err, "Error Verify User: "))
+		return false
+	} else if len(acc) == 1 {
+		return true
+	} else {
+		return false
+	}
+}
