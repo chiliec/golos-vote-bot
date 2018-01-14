@@ -81,7 +81,7 @@ func createTables(db *sql.DB) error {
 	case 3:
 		query := `
 		CREATE TABLE cred_temp AS (SELECT user_id, user_name, power, active FROM credentials);
-		DROP credentials;
+		DROP TABLE credentials;
 		ALTER TABLE cred_temp RENAME TO credentials;
 		`
 		_, err = tx.Exec(query)
