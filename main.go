@@ -561,10 +561,6 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 	if err != nil {
 		return err
 	}
-	userID, err := helpers.GetUserID(update)
-	if err != nil {
-		return err
-	}
 	messageID, err := helpers.GetMessageID(update)
 	if err != nil {
 		return err
