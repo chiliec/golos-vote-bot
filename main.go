@@ -518,11 +518,6 @@ func processMessage(update tgbotapi.Update) error {
 			text = "Голос принят"
 		}
 
-		credential := models.Credential{UserID: userID}
-		if err != nil {
-			return err
-		}
-
 		callbackConfig := tgbotapi.CallbackConfig{
 			CallbackQueryID: update.CallbackQuery.ID,
 			Text:            text,
@@ -599,8 +594,6 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 		Text: update.CallbackQuery.Message.Text,
 	}
 	bot.Send(updateTextConfig)
-
-	credential := models.Credential{UserID: userID}
 
 	if positives+negatives >= config.RequiredVotes {
 		if voteModel.Completed {
