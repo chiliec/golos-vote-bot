@@ -231,9 +231,8 @@ func processMessage(update tgbotapi.Update) error {
 			referralLink := "https://t.me/" + config.TelegramBotName + "?start=" + encodedUserName
 			msg.Text = fmt.Sprintf("Аккаунт: *%s*\n"+
 				"Делегированная сила: *%d%%*\n"+
-				"Внутренний рейтинг: *%d пунктов*\n"+
 				"Ссылка для приглашения: [%s](%s)\n(в случае успеха дает обоим по %.3f Силы Голоса)",
-				credential.UserName, credential.Power, credential.Rating, referralLink, referralLink, config.ReferralFee)
+				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
 		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
@@ -362,11 +361,7 @@ func processMessage(update tgbotapi.Update) error {
 				UserID:   userID,
 				UserName: login,
 				Power:    100,
-				Rating:   config.InitialUserRating,
 				Active:   true,
-			}
-			if rating, err := credential.GetRating(database); err == nil {
-				credential.Rating = rating
 			}
 
 			golos := golosClient.NewApi(config.Rpc, config.Chain)
@@ -523,21 +518,6 @@ func processMessage(update tgbotapi.Update) error {
 			text = "Голос принят"
 		}
 
-		credential := models.Credential{UserID: userID}
-		rating, err := credential.GetRating(database)
-		if err != nil {
-			return err
-		}
-		if rating <= config.RequiredVotes {
-			text = "Слишком мало рейтинга для голосования, предлагайте посты"
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            text,
-			}
-			bot.AnswerCallbackQuery(config)
-			return nil
-		}
-
 		callbackConfig := tgbotapi.CallbackConfig{
 			CallbackQueryID: update.CallbackQuery.ID,
 			Text:            text,
@@ -553,10 +533,6 @@ func processMessage(update tgbotapi.Update) error {
 			err = verifyVotes(voteModel, update)
 			if err != nil {
 				return err
-			}
-			// уменьшаем рейтинг голосовавшего при отрциательном голосовании
-			if !response.Result {
-				credential.DecrementRating(1, database)
 			}
 		}
 		return nil
@@ -582,10 +558,6 @@ func processMessage(update tgbotapi.Update) error {
 
 func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 	chatID, err := helpers.GetChatID(update)
-	if err != nil {
-		return err
-	}
-	userID, err := helpers.GetUserID(update)
 	if err != nil {
 		return err
 	}
@@ -619,8 +591,6 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 	}
 	bot.Send(updateTextConfig)
 
-	credential := models.Credential{UserID: userID}
-
 	if positives+negatives >= config.RequiredVotes {
 		if voteModel.Completed {
 			return nil
@@ -632,39 +602,10 @@ func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
 		}
 		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
 		if positives >= negatives {
-			credential.IncrementRating(1, database)
 			go vote(voteModel, chatID, messageID)
 			return nil
 		} else {
-			credential.DecrementRating(2*config.RequiredVotes, database)
-			rating, err := credential.GetRating(database)
-			if err != nil {
-				return err
-			}
-			msg.Text = "Пост отклонен, рейтинг предлагающего снижен"
-			if rating < 0 {
-				err = removeUser(bot, chatID, userID)
-				if err != nil {
-					log.Println(err)
-					msg.Text = "Пост отклонен, предлагающий должен быть исключен"
-				} else {
-					msg.Text = "Пост отклонен, предлагающий исключен"
-				}
-			}
-			// восстанавливаем рейтинг кураторам
-			for _, response := range responses {
-				// которые отклонили пост
-				if false == response.Result {
-					credential, err := models.GetCredentialByUserID(response.UserID, database)
-					if err != nil {
-						return err
-					}
-					err = credential.IncrementRating(1, database)
-					if err != nil {
-						return err
-					}
-				}
-			}
+			msg.Text = "Пост отклонен"
 		}
 		_, err = bot.Send(msg)
 		if err != nil {
