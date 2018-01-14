@@ -89,8 +89,8 @@ func createTables(db *sql.DB) error {
 			tx.Rollback()
 			return err
 		}
-		setMigrationVersion(tx, 2)
-		
+		setMigrationVersion(tx, 3)
+		//fallthrough
 	}
 	tx.Commit()
 	return nil
