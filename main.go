@@ -857,3 +857,22 @@ func sendReferralFee(referrer string, referral string) {
 		log.Println("Не отправили сообщение: " + err.Error())
 	}
 }
+
+func checkAuthority()
+{
+	for {
+		credentials, err := models.GetAllActiveCredentials(database)
+		if err != nil {
+			log.Println("checkAuthority() failed")
+		}
+		golos := golosClient.NewApi(config.Rpc, config.Chain)
+		defer golos.Rpc.Close()
+		for _, credential := range credentials {
+			if golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account) == false {
+				credential.Active = false
+				_, _ = credential.Save(database)
+			}
+   		}
+		time.Sleep(time.Hour)
+	}
+}
