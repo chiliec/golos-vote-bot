@@ -860,8 +860,7 @@ func sendReferralFee(referrer string, referral string) {
 	}
 }
 
-func checkAuthority()
-{
+func checkAuthority() {
 	for {
 		credentials, err := models.GetAllActiveCredentials(database)
 		if err != nil {
