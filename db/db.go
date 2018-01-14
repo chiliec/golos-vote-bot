@@ -78,10 +78,10 @@ func createTables(db *sql.DB) error {
 		}
 		setMigrationVersion(tx, 2)
 		fallthrough
-	case 3:
+	case 2:
 		query := `
-		CREATE TABLE cred_temp AS (SELECT user_id, user_name, power, active FROM credentials);
-		DROP credentials;
+		CREATE TABLE cred_temp AS SELECT user_id, user_name, power, active FROM credentials;
+		DROP TABLE credentials;
 		ALTER TABLE cred_temp RENAME TO credentials;
 		`
 		_, err = tx.Exec(query)
