@@ -7,9 +7,6 @@ import (
 	"strings"
 	"time"
 
-	// RPC
-	"github.com/asuleymanov/golos-go/apis/database"
-
 	// Vendor
 	"github.com/pkg/errors"
 )
