@@ -121,7 +121,7 @@ func (api *Client) Verify_Post(author, permlink string) bool {
 	}
 }
 
-func (api *Client) Verify_Delegate_Posting_Key_Sign(from_account *database.Account, to_user string) bool {
+func (api *Client) Verify_Delegate_Posting_Key_Sign(from_account, to_user string) bool {
 	for _, v := range from_account.Posting.AccountAuths {
 		tu := strings.Split(strings.Replace(strings.Replace(fmt.Sprintf("%v", v), "[", "", -1), "]", "", -1), " ")
 		if tu[0] == to_user {
