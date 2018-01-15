@@ -42,8 +42,7 @@ func IncrementCuratorVotes(userID int, db *sql.DB) {
 }
 
 func IsCuratorExists(userID int, db *sql.DB) bool {
-	row := db.QueryRow("SELECT user_id FROM curators "+
-		"WHERE user_id = ?", userID)
+	row := db.QueryRow("SELECT user_id FROM curators WHERE user_id = ?", userID)
 	var result *int
 	row.Scan(&result)
 	return result != nil
@@ -52,4 +51,11 @@ func IsCuratorExists(userID int, db *sql.DB) bool {
 func CleanAllLastVotes(db *sql.DB) {
 	_, err := db.Exec("UPDATE curators SET last_votes = 0")
 	return err	
+}
+
+func IsActiveCurator(userID int, db *sql.DB) {
+	row := db.QueryRow("SELECT active FROM curators WHERE user_id = ?", userID)
+	var result *int
+	row.Scan(&result)
+	return result	
 }
