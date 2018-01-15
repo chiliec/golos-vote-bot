@@ -6,13 +6,12 @@ func NewCurator(userID int, chatID int, db *sql.DB) (bool, error) {
 	prepare, err := db.Prepare("INSERT INTO referrals(" +
 		"user_id," +
 		"chat_id," +
-		"active" +
 		"values(?, ?, ?)")
 	defer prepare.Close()
 	if err != nil {
 		return false, err
 	}
-	_, err = prepare.Exec(userID, chatID, true)
+	_, err = prepare.Exec(userID, chatID)
 	if err != nil {
 		return false, err
 	}
