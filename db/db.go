@@ -120,7 +120,7 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 5)
-		//fallthrough
+		fallthrough
 	}
 	tx.Commit()
 	return nil
