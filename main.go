@@ -357,7 +357,7 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			models.NewPost(voteID)
+			models.NewPost(voteID, database)
 			//msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
 			//markup := helpers.GetVoteMarkup(voteID, 0, 0)
 			//msg.ReplyMarkup = markup
