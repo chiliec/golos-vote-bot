@@ -888,3 +888,10 @@ func newPost(voteID int, author string, permalink string, chatID int) {
 		}		
 	}
 }
+
+func queueProcessor()
+{
+	for i := 0; i != nil; i++ {
+		
+	}
+}
