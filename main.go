@@ -871,7 +871,6 @@ func checkAuthority() {
 		for _, credential := range credentials {
 			credential.Active = golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account)
 			_, _ = credential.Save(database)
-			}
    		}
 		time.Sleep(time.Hour)
 	}
