@@ -84,6 +84,8 @@ func main() {
 	u.Timeout = 60
 	
 	go checkAuthority()
+	go queueProcessor()
+	go freshnessPolice()
 
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
