@@ -877,6 +877,6 @@ func checkAuthority() {
 			}
 		}
 		golos.Rpc.Close()
-		time.Sleep(time.Hour)
+		time.Sleep(time.Hour * 24)
 	}
 }
