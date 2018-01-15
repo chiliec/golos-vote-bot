@@ -518,6 +518,17 @@ func processMessage(update tgbotapi.Update) error {
 		responseExists := response.Exists(database)
 		if !responseExists {
 			text = "Голос принят"
+			messageID, err := helpers.GetMessageID(update)
+			if err != nil {
+				return err
+			}
+			msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
+			msg.Text = text
+			_, err = bot.Send(msg)
+			if err != nil {
+				log.Println(err.Error())
+			}
+			models.IncrementCuratorVotes(userID, database)
 		}
 
 		callbackConfig := tgbotapi.CallbackConfig{
