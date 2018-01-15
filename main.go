@@ -766,7 +766,7 @@ func sendComment(author string, permalink string, text string) error {
 	return err
 }
 
-func vote(voteModel models.Vote, chatID int64, messageID int) {
+func vote(voteModel models.Vote) {
 	credentials, err := models.GetAllActiveCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
@@ -796,18 +796,22 @@ func vote(voteModel models.Vote, chatID int64, messageID int) {
 	}
 	wg.Wait()
 	successVotesCount := len(credentials) - len(errors)
-	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", successVotesCount)
+	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d", 
+			    successVotesCount, 
+			    helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
 	if err != nil {
 		log.Println(err.Error())
-		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s", config.Developer)
+		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s\n%s", 
+				   config.Developer,
+				   helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
 	}
 	log.Println(text)
-	msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
-	msg.Text = text
+	msg := tgbotapi.NewMessage(config.GroupID, text)
 	_, err = bot.Send(msg)
 	if err != nil {
 		log.Println(err.Error())
 	}
+	return
 }
 
 func sendReferralFee(referrer string, referral string) {
@@ -877,7 +881,7 @@ func newPost(voteID int, author string, permalink string, chatID int) {
 		if curatorChatID == chatID {
 			continue
 		}
-		msg := tgbotapi.NewMessage(curatorChatID, update.Message.Text)
+		msg := tgbotapi.NewMessage(curatorChatID, curateText)
 		markup := helpers.GetVoteMarkup(voteID, 0, 0)
 		msg.ReplyMarkup = markup
 		msg.DisableWebPagePreview = false
@@ -892,6 +896,48 @@ func newPost(voteID int, author string, permalink string, chatID int) {
 func queueProcessor()
 {
 	for i := 0; i != nil; i++ {
-		
+		votes, err := GetAllOpenedVotes(database)
+		macDiff := 0
+		var mostLikedPost models.Vote
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		for _, vote := range votes {
+			responses, err := models.GetAllResponsesForVoteID(voteModel.VoteID, database)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			var positives, negatives int
+			for _, response := range responses {
+				if response.Result {
+					positives = positives + 1
+				} else {
+					negatives = negatives + 1
+				}
+			}
+			if maxDiff < (positives-negatives) {
+				maxDiff = positives-negatives
+				mostLikedPost = vote
+			}
+		}
+		if checkFreshness(mostLikedPost) {
+			go vote(mostLikedPost)
+		} else {
+			mostLikedPost.Completed = true
+			mostLikedPost.Save(database)
+			continue
+		}
+		time.Sleep(time.Hour)
 	}
+}
+
+func checkFreshness(model.Vote) {
+	
+}
+
+func freshnessPolice() {
+	
 }
