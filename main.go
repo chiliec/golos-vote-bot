@@ -324,6 +324,12 @@ func processMessage(update tgbotapi.Update) error {
 				msg.Text = "Мне не интересно голосовать за пост с отключенными выплатами"
 				break
 			}
+			
+			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
+				msg.Text = "Слишком много уже открытых голосований. " +
+					   "Подожди, пока другой голос получит голоса или полиция свежести избавится от протухших постов."
+				break
+			}
 
 			if helpers.IsVoxPopuli(author) && config.IgnoreVP {
 				msg.Text = "Сообщества vox-populi могут сами себя поддержать"
@@ -528,6 +534,7 @@ func processMessage(update tgbotapi.Update) error {
 		text := "И да настигнет Админская кара всех тех, кто пытается злоупотреблять своей властью и голосовать несколько раз! Админь"
 		responseExists := response.Exists(database)
 		if !responseExists {
+			models.IncrementCuratorVotes(userID, database)
 			text = "Голос принят, Куратор. Продолжай в том же духе"
 		}
 
@@ -560,65 +567,6 @@ func processMessage(update tgbotapi.Update) error {
 	_, err = bot.Send(msg)
 	if err != nil {
 		return err
-	}
-	return nil
-}
-
-func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
-	chatID, err := helpers.GetChatID(update)
-	if err != nil {
-		return err
-	}
-	messageID, err := helpers.GetMessageID(update)
-	if err != nil {
-		return err
-	}
-
-	responses, err := models.GetAllResponsesForVoteID(voteModel.VoteID, database)
-	if err != nil {
-		return err
-	}
-
-	var positives, negatives int
-	for _, response := range responses {
-		if response.Result {
-			positives = positives + 1
-		} else {
-			negatives = negatives + 1
-		}
-	}
-
-	markup := helpers.GetVoteMarkup(voteModel.VoteID, positives, negatives)
-	updateTextConfig := tgbotapi.EditMessageTextConfig{
-		BaseEdit: tgbotapi.BaseEdit{
-			ChatID:      chatID,
-			MessageID:   messageID,
-			ReplyMarkup: &markup,
-		},
-		Text: update.CallbackQuery.Message.Text,
-	}
-	bot.Send(updateTextConfig)
-
-	if positives+negatives >= config.RequiredVotes {
-		if voteModel.Completed {
-			return nil
-		}
-		voteModel.Completed = true
-		_, err := voteModel.Save(database)
-		if err != nil {
-			return err
-		}
-		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
-		if positives >= negatives {
-			go vote(voteModel, chatID, messageID)
-			return nil
-		} else {
-			msg.Text = "Пост отклонен"
-		}
-		_, err = bot.Send(msg)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -934,10 +882,28 @@ func queueProcessor()
 	}
 }
 
-func checkFreshness(model.Vote) {
-	
+func checkFreshness(vote model.Vote) {
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
+	defer golos.Rpc.Close()
+	post, err := golos.Rpc.Database.GetContent(vote.Author, vote.Permalink)
+	if err != nil {
+		return true
+	}
+	if post.Mode != "first_payout" {
+		return false
+	}
+	return true
 }
 
 func freshnessPolice() {
-	
+	for {
+		var vote model.Vote
+		row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes WHERE completed = 0 ORDER BY date LIMIT 1")
+		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		if checkFreshness(vote) {
+			vote.Completed = true
+			vote.Save(database)
+		}
+		time.Sleep(3 * time.Hour)
+	}
 }
