@@ -9,8 +9,8 @@ import (
 
 func GetVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
 	stringVoteID := strconv.FormatInt(voteID, 10)
-	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍Лайк ("+strconv.Itoa(positives)+")", stringVoteID+"_good")
-	badButton := tgbotapi.NewInlineKeyboardButtonData("👎Дизлайк ("+strconv.Itoa(negatives)+")", stringVoteID+"_bad")
+	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍Лайк", stringVoteID + "_good")
+	badButton := tgbotapi.NewInlineKeyboardButtonData("👎Дизлайк", stringVoteID + "_bad")
 	row := []tgbotapi.InlineKeyboardButton{badButton, goodButton}
 	markup := tgbotapi.InlineKeyboardMarkup{}
 	markup.InlineKeyboard = append(markup.InlineKeyboard, row)
