@@ -103,6 +103,23 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 4)
+		fallthrough
+	case 4:
+		query := `
+		CREATE TABLE curators(
+			user_id INTEGER PRIMARY KEY NOT NULL,
+			chat_id INTEGER UNIQUE NOT NULL,
+			total_votes INTEGER NOT NULL DEFAULT 0,
+			last_votes INTEGER NOT NULL DEFAULT 0,
+			active BOOLEAN NOT NULL CHECK (active IN (0,1)) DEFAULT 0
+		);
+		`
+		_, err = tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 5)
 		//fallthrough
 	}
 	tx.Commit()
