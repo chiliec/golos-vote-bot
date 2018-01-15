@@ -247,7 +247,7 @@ func processMessage(update tgbotapi.Update) error {
 					msg.Text = "Правила курирования"
 				}
 			} else {
-				_, err = models.NewCurator(userID, update.Message.Chat.ID, database)
+				_, err = models.NewCurator(userID, chatID, database)
 				if err != nil {
 					return nil
 				}
@@ -357,7 +357,7 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			models.NewPost(voteID, database)
+			go newPost(voteID)
 			//msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
 			//markup := helpers.GetVoteMarkup(voteID, 0, 0)
 			//msg.ReplyMarkup = markup
@@ -899,5 +899,22 @@ func checkAuthority() {
 			_, _ = credential.Save(database)
    		}
 		time.Sleep(time.Hour)
+	}
+}
+
+func newPost(voteID int, author string, permalink string) {
+	curatorChatIDs := models.GetAllActiveCurstorsChatID(database)
+	curateText := "Новый пост - новая оценка. Курируй, куратор\n" + helpers.GetInstantViewLink(author, permalink)
+	for _, curatorChatID := range curatorChatIDs {
+		
+		msg := tgbotapi.NewMessage(curatorChatID, update.Message.Text)
+		markup := helpers.GetVoteMarkup(voteID, 0, 0)
+		msg.ReplyMarkup = markup
+		msg.DisableWebPagePreview = false
+		
+		message, err := bot.Send(msg)
+		if err != nil {
+			log.Println("Не смогли отправить сообщение куратору " + curatorChatID)
+		}		
 	}
 }
