@@ -357,16 +357,10 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			go newPost(voteID)
-			//msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
-			//markup := helpers.GetVoteMarkup(voteID, 0, 0)
-			//msg.ReplyMarkup = markup
-			//msg.DisableWebPagePreview = false
-			//message, err := bot.Send(msg)
-			//if err != nil {
-			//	return err
-			//}
-			go checkUniqueness(message, post.Body, voteModel)
+			if checkUniqueness(voteModel) {
+				go newPost(voteID, author, permalink, chatID)
+			}
+			
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -642,7 +636,7 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 }
 
 // https://text.ru/api-check/manual
-func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vote) {
+func checkUniqueness(voteModel models.Vote) bool {
 	token := config.TextRuToken
 	if len(config.TextRuToken) == 0 {
 		return
@@ -736,20 +730,7 @@ func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vot
 				log.Println(err.Error())
 				return
 			}
-			// TODO: понизить куратору карму
-			editMessage := tgbotapi.EditMessageTextConfig{
-				BaseEdit: tgbotapi.BaseEdit{
-					ChatID:      config.GroupID,
-					MessageID:   message.MessageID,
-					ReplyMarkup: nil,
-				},
-				Text: fmt.Sprintf("Текст не уникальный. Уникальность текста всего %.0f%% "+
-					"по [text.ru](https://text.ru/antiplagiat/%s)", textUnique, uid.TextUid),
-				ParseMode: "markdown",
-			}
-			_, err = bot.Send(editMessage)
-			if err != nil {
-				log.Println(err.Error())
+			return false
 			}
 		} else {
 			random := func(min, max int) int {
@@ -763,6 +744,7 @@ func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vot
 			if err != nil {
 				log.Println(err.Error())
 			}
+			return true
 		}
 		// если дошли сюда, то выходим из цикла
 		break
@@ -888,11 +870,13 @@ func checkAuthority() {
 	}
 }
 
-func newPost(voteID int, author string, permalink string) {
+func newPost(voteID int, author string, permalink string, chatID int) {
 	curatorChatIDs := models.GetAllActiveCurstorsChatID(database)
 	curateText := "Новый пост - новая оценка. Курируй, куратор\n" + helpers.GetInstantViewLink(author, permalink)
 	for _, curatorChatID := range curatorChatIDs {
-		
+		if curatorChatID == chatID {
+			continue
+		}
 		msg := tgbotapi.NewMessage(curatorChatID, update.Message.Text)
 		markup := helpers.GetVoteMarkup(voteID, 0, 0)
 		msg.ReplyMarkup = markup
