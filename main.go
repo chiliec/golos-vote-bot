@@ -502,19 +502,10 @@ func processMessage(update tgbotapi.Update) error {
 			return err
 		}
 
-		if false == models.IsActiveCredential(userID, database) {
+		if models.IsActiveCurator(userID, database) == false {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Я тебя не знаю, не могу допустить к голосованию",
-			}
-			bot.AnswerCallbackQuery(config)
-			return nil
-		}
-
-		if models.GetLastResponse(database).UserID == userID {
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Нельзя голосовать два раза подряд",
+				Text:            "Чекни свои привелегии. Ты не куратор!",
 			}
 			bot.AnswerCallbackQuery(config)
 			return nil
@@ -527,7 +518,7 @@ func processMessage(update tgbotapi.Update) error {
 		if voteModel.UserID == userID {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Нельзя голосовать за свой же пост!",
+				Text:            "Твоя власть не безгранична, Куратор. Нельзя голосовать за свой же пост!",
 			}
 			bot.AnswerCallbackQuery(config)
 			return nil
@@ -540,10 +531,10 @@ func processMessage(update tgbotapi.Update) error {
 			Result: isGood,
 			Date:   time.Now(),
 		}
-		text := "Вы уже голосовали!"
+		text := "И да настигнет Админская кара всех тех, кто пытается злоупотреблять своей властью и голосовать несколько раз! Админь"
 		responseExists := response.Exists(database)
 		if !responseExists {
-			text = "Голос принят"
+			text = "Голос принят, Куратор. Продолжай в том же духе"
 		}
 
 		callbackConfig := tgbotapi.CallbackConfig{
@@ -554,11 +545,6 @@ func processMessage(update tgbotapi.Update) error {
 
 		if !responseExists {
 			_, err := response.Save(database)
-			if err != nil {
-				return err
-			}
-			voteModel := models.GetVote(database, voteID)
-			err = verifyVotes(voteModel, update)
 			if err != nil {
 				return err
 			}
