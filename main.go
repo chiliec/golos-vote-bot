@@ -118,7 +118,7 @@ func processMessage(update tgbotapi.Update) error {
 		if err != nil {
 			return err
 		}
-		if false == domainRegexp.MatchString(update.Message.Text) && update.Message.Chat.Type != "private" {
+		if update.Message.Chat.Type != "private" {
 			return nil
 		}
 		switch {
@@ -238,6 +238,33 @@ func processMessage(update tgbotapi.Update) error {
 				"Ссылка для приглашения: [%s](%s)\n(в случае успеха дает обоим по %.3f Силы Голоса)",
 				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
+		case update.Message.Text == buttonWannaCurate:
+			if models.IsCuratorExists(userID, database) {
+				if models.IsCuratorActive(userID, database) {
+					msg.Text = "Ты уже являешься куратором"
+				} else {
+					state.Action = buttonWannaCurate
+					msg.Text = "Правила курирования"
+				}
+			} else {
+				_, err = models.NewCurator(userID, update.Message.Chat.ID, database)
+				if err != nil {
+					return nil
+				}
+				state.Action = buttonWannaCurate
+				msg.Text = "Правила курирования"
+			}
+		case update.Message.Text == buttonStopCurate:
+			if models.IsCuratorExists(userID, database) {
+				_, err = models.DeactivateCurator(userID, database)
+				if err != nil {
+					return nil
+				}
+				msg.Text = "Бремя кураторства покинуло тебя. Когда вдоволь насладишься свободой - возвращайся"
+				state.Action = "deactivatedCurator"
+			} else {
+				msg.Text = "То, что мертво - умереть не может. Так и ты - нельзя отказаться от курирования, не будучи куратором"
+			}
 		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
@@ -255,18 +282,6 @@ func processMessage(update tgbotapi.Update) error {
 				return nil
 			}
 
-			if update.Message.Chat.ID != config.GroupID {
-				msg.Text = "Удобный просмотр с мобильных устройств:\n" + helpers.GetInstantViewLink(author, permalink)
-				msg.DisableWebPagePreview = false
-				bot.Send(msg)
-				return nil
-			}
-
-			if update.Message.Chat.Type == "private" {
-				msg.Text = "Предложить пост можно в нашей группе " + config.GroupLink
-				break
-			}
-
 			if models.GetTodayVotesCountForUserID(userID, database) >= config.MaximumUserVotesPerDay {
 				msg.Text = "Лимит твоих постов на сегодня превышен. Приходи завтра!"
 				break
@@ -274,11 +289,6 @@ func processMessage(update tgbotapi.Update) error {
 
 			if models.GetLastVote(database).UserID == userID {
 				msg.Text = "Нельзя предлагать два поста подряд. Наберись терпения!"
-				break
-			}
-
-			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
-				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся? Ищи по тегу #открыто"
 				break
 			}
 
@@ -300,14 +310,13 @@ func processMessage(update tgbotapi.Update) error {
 			}
 
 			isActive := models.IsActiveCredential(userID, database)
-			if false == isActive {
-				msg.Text = "Я тебя не знаю и не могу допустить к кураторству. " +
-					"Напиши мне в личку, давай обсудим этот вопрос"
+			if isActive == false {
+				msg.Text = "Предлагать посты для голосования могут только голосующие пользователи. Жулик не воруй!"
 				break
 			}
 
 			if post.Mode != "first_payout" {
-				msg.Text = "Выплата за пост уже была произведена!"
+				msg.Text = "Выплата за пост уже была произведена! Есть что-нибудь посвежее?"
 				break
 			}
 
@@ -348,14 +357,15 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
-			markup := helpers.GetVoteMarkup(voteID, 0, 0)
-			msg.ReplyMarkup = markup
-			msg.DisableWebPagePreview = false
-			message, err := bot.Send(msg)
-			if err != nil {
-				return err
-			}
+			models.NewPost(voteID)
+			//msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
+			//markup := helpers.GetVoteMarkup(voteID, 0, 0)
+			//msg.ReplyMarkup = markup
+			//msg.DisableWebPagePreview = false
+			//message, err := bot.Send(msg)
+			//if err != nil {
+			//	return err
+			//}
 			go checkUniqueness(message, post.Body, voteModel)
 			return nil
 		case state.Action == buttonAddKey:
@@ -453,6 +463,14 @@ func processMessage(update tgbotapi.Update) error {
 					msg.Text = "У тебя пока слишком маленькая Сила Голоса для этого"
 				}
 				state.Action = "updatedPower"
+			}
+		case state.Action == buttonWannaCurate:
+			if update.Message.Text == "Я все понял, все еще хочу курировать" {
+				if models.ActivateCurator(UserId, database) {
+					return nil
+				}
+				msg.Text = "Отлично, теперь ты можешь участвовать в курировании постов"
+				state.Action = "activatedCurator"
 			}
 		default:
 			if update.Message.Chat.Type != "private" {
