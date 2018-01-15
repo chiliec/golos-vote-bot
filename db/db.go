@@ -93,6 +93,19 @@ func createTables(db *sql.DB) error {
 		fallthrough
 	case 3:
 		query := `
+			CREATE UNIQUE INDEX idx_credentials_user_id ON credentials(user_id);
+			CREATE UNIQUE INDEX idx_votes_id ON votes(id);
+			CREATE UNIQUE INDEX idx_responses_id ON responses(id);
+			`
+		_, err = tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 4)
+		fallthrough
+	case 4:
+		query := `
 		CREATE TABLE curators(
 			user_id INTEGER PRIMARY KEY NOT NULL,
 			chat_id INTEGER UNIQUE NOT NULL,
@@ -106,7 +119,7 @@ func createTables(db *sql.DB) error {
 			tx.Rollback()
 			return err
 		}
-		setMigrationVersion(tx, 4)
+		setMigrationVersion(tx, 5)
 		//fallthrough
 	}
 	tx.Commit()
