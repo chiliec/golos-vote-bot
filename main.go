@@ -80,7 +80,7 @@ func main() {
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
-	
+
 	go checkAuthority()
 
 	updates, err := bot.GetUpdatesChan(u)
@@ -864,14 +864,19 @@ func checkAuthority() {
 	for {
 		credentials, err := models.GetAllActiveCredentials(database)
 		if err != nil {
-			log.Println("checkAuthority() failed")
+			log.Println(err.Error())
 		}
 		golos := golosClient.NewApi(config.Rpc, config.Chain)
-		defer golos.Rpc.Close()
 		for _, credential := range credentials {
-			credential.Active = golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account)
-			_, _ = credential.Save(database)
-   		}
+			if !golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account) {
+				credential.Active = false
+				_, err = credential.Save(database)
+				if err != nil {
+					log.Println(err.Error())
+				}
+			}
+		}
+		golos.Rpc.Close()
 		time.Sleep(time.Hour)
 	}
 }

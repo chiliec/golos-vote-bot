@@ -90,6 +90,19 @@ func createTables(db *sql.DB) error {
 			return err
 		}
 		setMigrationVersion(tx, 3)
+		fallthrough
+	case 3:
+		query := `
+			CREATE UNIQUE INDEX idx_credentials_user_id ON credentials(user_id);
+			CREATE UNIQUE INDEX idx_votes_id ON votes(id);
+			CREATE UNIQUE INDEX idx_responses_id ON responses(id);
+			`
+		_, err = tx.Exec(query)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		setMigrationVersion(tx, 4)
 		//fallthrough
 	}
 	tx.Commit()
