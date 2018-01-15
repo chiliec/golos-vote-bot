@@ -58,3 +58,19 @@ func IsActiveCurator(userID int, db *sql.DB) {
 	row.Scan(&result)
 	return result	
 }
+
+func GetAllActiveCurstorsChatID(db *sql.DB) (chatIDs []int, err error) {
+	rows, err := db.Query("SELECT chat_id FROM curators WHERE active = 1")
+	if err != nil {
+		return chatIDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var result *int
+		err := rows.Scan(&result)
+		if err == nil {
+			chatIDs = append(chatIDs, result)
+		}
+	}
+	return chatIDs, err
+}
