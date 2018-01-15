@@ -44,30 +44,18 @@ func (api *Client) Vote(user_name, author_name, permlink string, weight int) err
 	}
 }
 
-func (api *Client) Multi_Vote(username, author, permlink string, arrvote []ArrVote, minVotePowerPercent int) (int, error) {
+func (api *Client) Multi_Vote(username, author, permlink string, arrvote []ArrVote) error {
 	var trx []types.Operation
 	var arrvotes []ArrVote
 
 	for _, v := range arrvote {
-		// FIXME: could we do one request for all accounts and iterate by them?
-		acc, err := api.Rpc.Database.GetAccounts([]string{v.User})
-		if err != nil {
-			log.Println(errors.Wrapf(err, "Error Multi_Vote: "))
-			continue
-		} else if len(acc) == 1 {
-			votingPower := acc[0].VotingPower.Int64() / 100
-			log.Printf("votingPower %s is %d", acc[0].Name, votingPower)
-			if votingPower < int64(minVotePowerPercent) {
-				continue
-			}
-			if api.Verify_Delegate_Posting_Key_Sign(acc[0], username) && !api.Verify_Voter(author, permlink, v.User) {
-				arrvotes = append(arrvotes, v)
-			}
+		if api.Verify_Delegate_Posting_Key_Sign(v.User, username) && !api.Verify_Voter(author, permlink, v.User) {
+			arrvotes = append(arrvotes, v)
 		}
 	}
 
 	if len(arrvotes) == 0 {
-		return 0, errors.New("Error Multi_Vote: All users from the list have already voted.")
+		return errors.New("Error Multi_Vote : All users from the list have already voted.")
 	}
 
 	for _, val := range arrvotes {
@@ -82,10 +70,10 @@ func (api *Client) Multi_Vote(username, author, permlink string, arrvote []ArrVo
 
 	resp, err := api.Send_Trx(username, trx)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Error Multi_Vote: ")
+		return errors.Wrapf(err, "Error Multi_Vote: ")
 	} else {
-		log.Println("[Multi_Vote] Block -> ", resp.BlockNum, " User/Permlink -> ", author+"/"+permlink)
-		return len(arrvotes), nil
+		log.Println("[Multi_Vote] Block -> ", resp.BlockNum, " User/Permlink -> ", author, "/", permlink)
+		return nil
 	}
 }
 
