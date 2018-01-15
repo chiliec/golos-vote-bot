@@ -3,7 +3,7 @@ package models
 import "database/sql"
 
 func NewCurator(userID int, chatID int, db *sql.DB) (bool, error) {
-	prepare, err := db.Prepare("INSERT INTO referrals(" +
+	prepare, err := db.Prepare("INSERT INTO curators(" +
 		"user_id," +
 		"chat_id," +
 		"values(?, ?, ?)")
@@ -29,14 +29,15 @@ func ActivateCurator(userID int, db *sql.DB) error {
 }
 
 func GetLastCuratorVotes(userID int, db *sql.DB) (int, error) {
-	row := db.QueryRow("SELECT last_votes WHERE user_id = ?", userID)
+	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
 	var result *int
 	err = row.Scan(&result)
 	return result, err
 }
 
 func IncrementCuratorVotes(userID int, db *sql.DB) {
-	_, err := db.Exec("UPDATE curators SET (total_votes, last_votes) = (SELECT total_votes, last_votes WHERE user_id = ?) WHERE user_id = ?", userID, userID)
+	_, err := db.Exec("UPDATE curators SET (total_votes, last_votes) = "+
+			  "(SELECT total_votes, last_votes FROM curators WHERE user_id = ?) WHERE user_id = ?", userID, userID)
 	return err
 }
 
