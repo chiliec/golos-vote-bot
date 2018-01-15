@@ -869,9 +869,8 @@ func checkAuthority() {
 		golos := golosClient.NewApi(config.Rpc, config.Chain)
 		defer golos.Rpc.Close()
 		for _, credential := range credentials {
-			if golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account) == false {
-				credential.Active = false
-				_, _ = credential.Save(database)
+			credential.Active = golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account)
+			_, _ = credential.Save(database)
 			}
    		}
 		time.Sleep(time.Hour)
