@@ -33,6 +33,8 @@ const (
 	buttonRemoveKey     = "🦀Остановить"
 	buttonSetPowerLimit = "💪Настройка"
 	buttonInformation   = "⚓️Информация"
+	buttonWannaCurate   = "Стать куратором"
+	buttonStopCurate    = "Прекратить кураторство"
 )
 
 var (
@@ -462,10 +464,16 @@ func processMessage(update tgbotapi.Update) error {
 			firstButton := tgbotapi.NewKeyboardButton(buttonAddKey)
 			secondButton := tgbotapi.NewKeyboardButton(buttonRemoveKey)
 			firstButtonRow := []tgbotapi.KeyboardButton{firstButton, secondButton}
+			
 			thirdButton := tgbotapi.NewKeyboardButton(buttonSetPowerLimit)
 			fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
 			secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
-			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow)
+			
+			fifthButton := tgbotapi.NewKeyboardButton(buttonWannaCurate)
+			sixthButton := tgbotapi.NewKeyboardButton(buttonStopCurate)
+			thirdButtonRow := []tgbotapi.KeyboardButton{fifthButton, sixthButton}
+			
+			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow, thirdButtonRow)
 			msg.ReplyMarkup = keyboard
 		}
 	} else if update.CallbackQuery != nil {
