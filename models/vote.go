@@ -69,3 +69,17 @@ func GetLastVote(db *sql.DB) (vote Vote) {
 	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
 	return vote
 }
+
+func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
+	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, date FROM votes WHERE completed = 0")
+	if err != nil {
+		return votes, err
+	}
+	for rows.Next() {
+		var vote Vote
+		rows.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		votes = append(votes, vote)
+	}
+	
+	return votes, err
+}
