@@ -72,7 +72,7 @@ func IsActiveCurator(userID int, db *sql.DB) bool {
 }
 
 func GetAllActiveCurstorsChatID(db *sql.DB) ([]int64, error) {
-	var chatIDs []int
+	var chatIDs []int64
 	rows, err := db.Query("SELECT chat_id FROM curators WHERE active = 1")
 	if err != nil {
 		return chatIDs, err
