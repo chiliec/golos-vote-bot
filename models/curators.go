@@ -30,7 +30,7 @@ func ActivateCurator(userID int, db *sql.DB) error {
 
 func GetLastCuratorVotes(userID int, db *sql.DB) (result int, err error) {
 	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
-	err := row.Scan(&result)
+	err = row.Scan(&result)
 	return result, err
 }
 
@@ -58,7 +58,7 @@ func CleanAllLastVotes(db *sql.DB) error {
 
 func IsActiveCurator(userID int, db *sql.DB) bool {
 	row := db.QueryRow("SELECT active FROM curators WHERE user_id = ?", userID)
-	var result *int
+	var result bool
 	row.Scan(&result)
 	if result {
 		return result	
@@ -67,15 +67,16 @@ func IsActiveCurator(userID int, db *sql.DB) bool {
 	}
 }
 
-func GetAllActiveCurstorsChatID(db *sql.DB) (chatIDs []int, err error) {
+func GetAllActiveCurstorsChatID(db *sql.DB) ([]int, error) {
+	var chatIDs []int
 	rows, err := db.Query("SELECT chat_id FROM curators WHERE active = 1")
 	if err != nil {
 		return chatIDs, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var result *int
-		err := rows.Scan(&result)
+		var result int
+		err = rows.Scan(&result)
 		if err == nil {
 			chatIDs = append(chatIDs, result)
 		}
@@ -85,7 +86,7 @@ func GetAllActiveCurstorsChatID(db *sql.DB) (chatIDs []int, err error) {
 
 func GetCuratorLastVotes(userID int, db *sql.DB) int {
 	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
-	var result *int
+	var result int
 	row.Scan(&result)
 	if result {
 		return result	
@@ -94,14 +95,15 @@ func GetCuratorLastVotes(userID int, db *sql.DB) int {
 	}
 }
 
-func GetAllActiveCurstorsID(db *sql.DB) (IDs []int, err error) {
+func GetAllActiveCurstorsID(db *sql.DB) ([]int, error) {
+	var IDs int
 	rows, err := db.Query("SELECT user_id FROM curators WHERE active = 1")
 	if err != nil {
 		return IDs, err
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var result *int
+		var result int
 		err := rows.Scan(&result)
 		if err == nil {
 			IDs = append(IDs, result)
