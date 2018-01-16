@@ -847,7 +847,7 @@ func newPost(voteID int, author string, permalink string, chatID int) {
 			continue
 		}
 		msg := tgbotapi.NewMessage(curatorChatID, curateText)
-		markup := helpers.GetVoteMarkup(voteID, 0, 0)
+		markup := helpers.GetVoteMarkup(voteID)
 		msg.ReplyMarkup = markup
 		msg.DisableWebPagePreview = false
 		
