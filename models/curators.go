@@ -79,7 +79,7 @@ func GetAllActiveCurstorsChatID(db *sql.DB) ([]int64, error) {
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var result int
+		var result int64
 		err = rows.Scan(&result)
 		if err == nil {
 			chatIDs = append(chatIDs, result)
