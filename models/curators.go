@@ -2,7 +2,7 @@ package models
 
 import "database/sql"
 
-func NewCurator(userID int64, chatID int, db *sql.DB) (bool, error) {
+func NewCurator(userID int, chatID int64, db *sql.DB) (bool, error) {
 	prepare, err := db.Prepare("INSERT INTO curators(" +
 		"user_id," +
 		"chat_id," +
