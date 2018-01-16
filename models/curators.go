@@ -35,10 +35,10 @@ func GetLastCuratorVotes(userID int, db *sql.DB) (result int, err error) {
 }
 
 func IncrementCuratorVotes(userID int, db *sql.DB) error {
-	row, err := db.QueryRow("SELECT total_votes, last_votes FROM curators WHERE user_id = ?", userID)
+	row := db.QueryRow("SELECT total_votes, last_votes FROM curators WHERE user_id = ?", userID)
 	var totalVotes int
 	var lastVotes int
-	err = row.Scan(&totalVotes, &lastVotes)
+	err := row.Scan(&totalVotes, &lastVotes)
 	_, err = db.Exec("UPDATE curators SET total_votes = ?, last_votes = ? WHERE user_id = ?", 
 			  totalVotes+1, lastVotes+1, userID)
 	return err
