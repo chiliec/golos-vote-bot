@@ -33,6 +33,8 @@ const (
 	buttonRemoveKey     = "🦀Остановить"
 	buttonSetPowerLimit = "💪Настройка"
 	buttonInformation   = "⚓️Информация"
+	buttonWannaCurate   = "Стать куратором"
+	buttonStopCurate    = "Прекратить кураторство"
 )
 
 var (
@@ -82,6 +84,8 @@ func main() {
 	u.Timeout = 60
 
 	go checkAuthority()
+	go queueProcessor()
+	go freshnessPolice()
 
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
@@ -116,7 +120,7 @@ func processMessage(update tgbotapi.Update) error {
 		if err != nil {
 			return err
 		}
-		if false == domainRegexp.MatchString(update.Message.Text) && update.Message.Chat.Type != "private" {
+		if update.Message.Chat.Type != "private" {
 			return nil
 		}
 		switch {
@@ -236,6 +240,33 @@ func processMessage(update tgbotapi.Update) error {
 				"Ссылка для приглашения: [%s](%s)\n(в случае успеха дает обоим по %.3f Силы Голоса)",
 				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
+		case update.Message.Text == buttonWannaCurate:
+			if models.IsCuratorExists(userID, database) {
+				if models.IsCuratorActive(userID, database) {
+					msg.Text = "Ты уже являешься куратором"
+				} else {
+					state.Action = buttonWannaCurate
+					msg.Text = "Правила курирования"
+				}
+			} else {
+				_, err = models.NewCurator(userID, chatID, database)
+				if err != nil {
+					return nil
+				}
+				state.Action = buttonWannaCurate
+				msg.Text = "Правила курирования"
+			}
+		case update.Message.Text == buttonStopCurate:
+			if models.IsCuratorExists(userID, database) {
+				_, err = models.DeactivateCurator(userID, database)
+				if err != nil {
+					return nil
+				}
+				msg.Text = "Бремя кураторства покинуло тебя. Когда вдоволь насладишься свободой - возвращайся"
+				state.Action = "deactivatedCurator"
+			} else {
+				msg.Text = "То, что мертво - умереть не может. Так и ты - нельзя отказаться от курирования, не будучи куратором"
+			}
 		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
@@ -253,18 +284,6 @@ func processMessage(update tgbotapi.Update) error {
 				return nil
 			}
 
-			if update.Message.Chat.ID != config.GroupID {
-				msg.Text = "Удобный просмотр с мобильных устройств:\n" + helpers.GetInstantViewLink(author, permalink)
-				msg.DisableWebPagePreview = false
-				bot.Send(msg)
-				return nil
-			}
-
-			if update.Message.Chat.Type == "private" {
-				msg.Text = "Предложить пост можно в нашей группе " + config.GroupLink
-				break
-			}
-
 			if models.GetTodayVotesCountForUserID(userID, database) >= config.MaximumUserVotesPerDay {
 				msg.Text = "Лимит твоих постов на сегодня превышен. Приходи завтра!"
 				break
@@ -272,11 +291,6 @@ func processMessage(update tgbotapi.Update) error {
 
 			if models.GetLastVote(database).UserID == userID {
 				msg.Text = "Нельзя предлагать два поста подряд. Наберись терпения!"
-				break
-			}
-
-			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
-				msg.Text = "Слишком много уже открытых голосований. Может сначала с ними разберёмся? Ищи по тегу #открыто"
 				break
 			}
 
@@ -298,19 +312,24 @@ func processMessage(update tgbotapi.Update) error {
 			}
 
 			isActive := models.IsActiveCredential(userID, database)
-			if false == isActive {
-				msg.Text = "Я тебя не знаю и не могу допустить к кураторству. " +
-					"Напиши мне в личку, давай обсудим этот вопрос"
+			if isActive == false {
+				msg.Text = "Предлагать посты для голосования могут только голосующие пользователи. Жулик не воруй!"
 				break
 			}
 
 			if post.Mode != "first_payout" {
-				msg.Text = "Выплата за пост уже была произведена!"
+				msg.Text = "Выплата за пост уже была произведена! Есть что-нибудь посвежее?"
 				break
 			}
 
 			if post.MaxAcceptedPayout == "0.000 GBG" {
 				msg.Text = "Мне не интересно голосовать за пост с отключенными выплатами"
+				break
+			}
+			
+			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
+				msg.Text = "Слишком много уже открытых голосований. " +
+					   "Подожди, пока другой голос получит голоса или полиция свежести избавится от протухших постов."
 				break
 			}
 
@@ -346,15 +365,10 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			msg.Text = "Голосование за пост #открыто\n" + helpers.GetInstantViewLink(author, permalink)
-			markup := helpers.GetVoteMarkup(voteID, 0, 0)
-			msg.ReplyMarkup = markup
-			msg.DisableWebPagePreview = false
-			message, err := bot.Send(msg)
-			if err != nil {
-				return err
+			if checkUniqueness(voteModel) {
+				go newPost(voteID, author, permalink, chatID)
 			}
-			go checkUniqueness(message, post.Body, voteModel)
+			
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
@@ -452,6 +466,14 @@ func processMessage(update tgbotapi.Update) error {
 				}
 				state.Action = "updatedPower"
 			}
+		case state.Action == buttonWannaCurate:
+			if update.Message.Text == "Я все понял, все еще хочу курировать" {
+				if models.ActivateCurator(UserId, database) {
+					return nil
+				}
+				msg.Text = "Отлично, теперь ты можешь участвовать в курировании постов"
+				state.Action = "activatedCurator"
+			}
 		default:
 			if update.Message.Chat.Type != "private" {
 				return nil
@@ -462,10 +484,16 @@ func processMessage(update tgbotapi.Update) error {
 			firstButton := tgbotapi.NewKeyboardButton(buttonAddKey)
 			secondButton := tgbotapi.NewKeyboardButton(buttonRemoveKey)
 			firstButtonRow := []tgbotapi.KeyboardButton{firstButton, secondButton}
+			
 			thirdButton := tgbotapi.NewKeyboardButton(buttonSetPowerLimit)
 			fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
 			secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
-			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow)
+			
+			fifthButton := tgbotapi.NewKeyboardButton(buttonWannaCurate)
+			sixthButton := tgbotapi.NewKeyboardButton(buttonStopCurate)
+			thirdButtonRow := []tgbotapi.KeyboardButton{fifthButton, sixthButton}
+			
+			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow, thirdButtonRow)
 			msg.ReplyMarkup = keyboard
 		}
 	} else if update.CallbackQuery != nil {
@@ -476,19 +504,10 @@ func processMessage(update tgbotapi.Update) error {
 			return err
 		}
 
-		if false == models.IsActiveCredential(userID, database) {
+		if models.IsActiveCurator(userID, database) == false {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Я тебя не знаю, не могу допустить к голосованию",
-			}
-			bot.AnswerCallbackQuery(config)
-			return nil
-		}
-
-		if models.GetLastResponse(database).UserID == userID {
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Нельзя голосовать два раза подряд",
+				Text:            "Чекни свои привелегии. Ты не куратор!",
 			}
 			bot.AnswerCallbackQuery(config)
 			return nil
@@ -501,7 +520,7 @@ func processMessage(update tgbotapi.Update) error {
 		if voteModel.UserID == userID {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Нельзя голосовать за свой же пост!",
+				Text:            "Твоя власть не безгранична, Куратор. Нельзя голосовать за свой же пост!",
 			}
 			bot.AnswerCallbackQuery(config)
 			return nil
@@ -514,7 +533,7 @@ func processMessage(update tgbotapi.Update) error {
 			Result: isGood,
 			Date:   time.Now(),
 		}
-		text := "Вы уже голосовали!"
+		text := "И да настигнет Админская кара всех тех, кто пытается злоупотреблять своей властью и голосовать несколько раз! Админь"
 		responseExists := response.Exists(database)
 		if !responseExists {
 			text = "Голос принят"
@@ -542,11 +561,6 @@ func processMessage(update tgbotapi.Update) error {
 			if err != nil {
 				return err
 			}
-			voteModel := models.GetVote(database, voteID)
-			err = verifyVotes(voteModel, update)
-			if err != nil {
-				return err
-			}
 		}
 		return nil
 	}
@@ -569,65 +583,6 @@ func processMessage(update tgbotapi.Update) error {
 	return nil
 }
 
-func verifyVotes(voteModel models.Vote, update tgbotapi.Update) error {
-	chatID, err := helpers.GetChatID(update)
-	if err != nil {
-		return err
-	}
-	messageID, err := helpers.GetMessageID(update)
-	if err != nil {
-		return err
-	}
-
-	responses, err := models.GetAllResponsesForVoteID(voteModel.VoteID, database)
-	if err != nil {
-		return err
-	}
-
-	var positives, negatives int
-	for _, response := range responses {
-		if response.Result {
-			positives = positives + 1
-		} else {
-			negatives = negatives + 1
-		}
-	}
-
-	markup := helpers.GetVoteMarkup(voteModel.VoteID, positives, negatives)
-	updateTextConfig := tgbotapi.EditMessageTextConfig{
-		BaseEdit: tgbotapi.BaseEdit{
-			ChatID:      chatID,
-			MessageID:   messageID,
-			ReplyMarkup: &markup,
-		},
-		Text: update.CallbackQuery.Message.Text,
-	}
-	bot.Send(updateTextConfig)
-
-	if positives+negatives >= config.RequiredVotes {
-		if voteModel.Completed {
-			return nil
-		}
-		voteModel.Completed = true
-		_, err := voteModel.Save(database)
-		if err != nil {
-			return err
-		}
-		msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
-		if positives >= negatives {
-			go vote(voteModel, chatID, messageID)
-			return nil
-		} else {
-			msg.Text = "Пост отклонен"
-		}
-		_, err = bot.Send(msg)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 	memberConfig := tgbotapi.KickChatMemberConfig{
 		ChatMemberConfig: tgbotapi.ChatMemberConfig{
@@ -641,7 +596,7 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 }
 
 // https://text.ru/api-check/manual
-func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vote) {
+func checkUniqueness(voteModel models.Vote) bool {
 	token := config.TextRuToken
 	if len(config.TextRuToken) == 0 {
 		return
@@ -735,20 +690,7 @@ func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vot
 				log.Println(err.Error())
 				return
 			}
-			// TODO: понизить куратору карму
-			editMessage := tgbotapi.EditMessageTextConfig{
-				BaseEdit: tgbotapi.BaseEdit{
-					ChatID:      config.GroupID,
-					MessageID:   message.MessageID,
-					ReplyMarkup: nil,
-				},
-				Text: fmt.Sprintf("Текст не уникальный. Уникальность текста всего %.0f%% "+
-					"по [text.ru](https://text.ru/antiplagiat/%s)", textUnique, uid.TextUid),
-				ParseMode: "markdown",
-			}
-			_, err = bot.Send(editMessage)
-			if err != nil {
-				log.Println(err.Error())
+			return false
 			}
 		} else {
 			random := func(min, max int) int {
@@ -762,6 +704,7 @@ func checkUniqueness(message tgbotapi.Message, text string, voteModel models.Vot
 			if err != nil {
 				log.Println(err.Error())
 			}
+			return true
 		}
 		// если дошли сюда, то выходим из цикла
 		break
@@ -783,7 +726,7 @@ func sendComment(author string, permalink string, text string) error {
 	return err
 }
 
-func vote(voteModel models.Vote, chatID int64, messageID int) {
+func vote(voteModel models.Vote) {
 	credentials, err := models.GetAllActiveCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")
@@ -813,18 +756,22 @@ func vote(voteModel models.Vote, chatID int64, messageID int) {
 	}
 	wg.Wait()
 	successVotesCount := len(credentials) - len(errors)
-	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов", successVotesCount)
+	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d", 
+			    successVotesCount, 
+			    helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
 	if err != nil {
 		log.Println(err.Error())
-		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s", config.Developer)
+		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s\n%s", 
+				   config.Developer,
+				   helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
 	}
 	log.Println(text)
-	msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
-	msg.Text = text
+	msg := tgbotapi.NewMessage(config.GroupID, text)
 	_, err = bot.Send(msg)
 	if err != nil {
 		log.Println(err.Error())
 	}
+	return
 }
 
 func sendReferralFee(referrer string, referral string) {
@@ -889,5 +836,91 @@ func checkAuthority() {
 		}
 		golos.Rpc.Close()
 		time.Sleep(time.Hour)
+	}
+}
+
+func newPost(voteID int, author string, permalink string, chatID int) {
+	curatorChatIDs := models.GetAllActiveCurstorsChatID(database)
+	curateText := "Новый пост - новая оценка. Курируй, куратор\n" + helpers.GetInstantViewLink(author, permalink)
+	for _, curatorChatID := range curatorChatIDs {
+		if curatorChatID == chatID {
+			continue
+		}
+		msg := tgbotapi.NewMessage(curatorChatID, curateText)
+		markup := helpers.GetVoteMarkup(voteID, 0, 0)
+		msg.ReplyMarkup = markup
+		msg.DisableWebPagePreview = false
+		
+		message, err := bot.Send(msg)
+		if err != nil {
+			log.Println("Не смогли отправить сообщение куратору " + curatorChatID)
+		}		
+	}
+}
+
+func queueProcessor()
+{
+	for i := 0; i != nil; i++ {
+		votes, err := GetAllOpenedVotes(database)
+		macDiff := 0
+		var mostLikedPost models.Vote
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		for _, vote := range votes {
+			responses, err := models.GetAllResponsesForVoteID(voteModel.VoteID, database)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			var positives, negatives int
+			for _, response := range responses {
+				if response.Result {
+					positives = positives + 1
+				} else {
+					negatives = negatives + 1
+				}
+			}
+			if maxDiff < (positives-negatives) {
+				maxDiff = positives-negatives
+				mostLikedPost = vote
+			}
+		}
+		if checkFreshness(mostLikedPost) {
+			go vote(mostLikedPost)
+		} else {
+			mostLikedPost.Completed = true
+			mostLikedPost.Save(database)
+			continue
+		}
+		time.Sleep(time.Hour)
+	}
+}
+
+func checkFreshness(vote model.Vote) {
+	golos := golosClient.NewApi(config.Rpc, config.Chain)
+	defer golos.Rpc.Close()
+	post, err := golos.Rpc.Database.GetContent(vote.Author, vote.Permalink)
+	if err != nil {
+		return true
+	}
+	if post.Mode != "first_payout" {
+		return false
+	}
+	return true
+}
+
+func freshnessPolice() {
+	for {
+		var vote model.Vote
+		row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes WHERE completed = 0 ORDER BY date LIMIT 1")
+		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		if checkFreshness(vote) {
+			vote.Completed = true
+			vote.Save(database)
+		}
+		time.Sleep(3 * time.Hour)
 	}
 }
