@@ -897,7 +897,7 @@ func queueProcessor() {
 	}
 }
 
-func checkFreshness(vote model.Vote) {
+func checkFreshness(vote models.Vote) {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
 	post, err := golos.Rpc.Database.GetContent(vote.Author, vote.Permalink)
@@ -912,7 +912,7 @@ func checkFreshness(vote model.Vote) {
 
 func freshnessPolice() {
 	for {
-		var vote model.Vote
+		var vote models.Vote
 		row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
 				   "WHERE completed = 0 ORDER BY date LIMIT 1")
 		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
