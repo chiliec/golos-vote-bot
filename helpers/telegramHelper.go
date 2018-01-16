@@ -7,7 +7,7 @@ import (
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
-func GetVoteMarkup(voteID int64, positives int, negatives int) tgbotapi.InlineKeyboardMarkup {
+func GetVoteMarkup(voteID int64) tgbotapi.InlineKeyboardMarkup {
 	stringVoteID := strconv.FormatInt(voteID, 10)
 	goodButton := tgbotapi.NewInlineKeyboardButtonData("👍Лайк", stringVoteID + "_good")
 	badButton := tgbotapi.NewInlineKeyboardButtonData("👎Дизлайк", stringVoteID + "_bad")
