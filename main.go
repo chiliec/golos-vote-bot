@@ -862,14 +862,14 @@ func queueProcessor()
 {
 	for i := 0; i != nil; i++ {
 		votes, err := GetAllOpenedVotes(database)
-		macDiff := 0
+		maxDiff := 0
 		var mostLikedPost models.Vote
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 		for _, vote := range votes {
-			responses, err := models.GetAllResponsesForVoteID(voteModel.VoteID, database)
+			responses, err := models.GetAllResponsesForVoteID(vote.VoteID, database)
 			if err != nil {
 				log.Println(err)
 				continue
@@ -883,7 +883,7 @@ func queueProcessor()
 					negatives = negatives + 1
 				}
 			}
-			if maxDiff < (positives-negatives) {
+			if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
 				maxDiff = positives-negatives
 				mostLikedPost = vote
 			}
@@ -915,9 +915,10 @@ func checkFreshness(vote model.Vote) {
 func freshnessPolice() {
 	for {
 		var vote model.Vote
-		row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes WHERE completed = 0 ORDER BY date LIMIT 1")
+		row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
+				   "WHERE completed = 0 ORDER BY date LIMIT 1")
 		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
-		if checkFreshness(vote) {
+		if !checkFreshness(vote) {
 			vote.Completed = true
 			vote.Save(database)
 		}
