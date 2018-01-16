@@ -258,7 +258,7 @@ func processMessage(update tgbotapi.Update) error {
 			}
 		case update.Message.Text == buttonStopCurate:
 			if models.IsCuratorExists(userID, database) {
-				_, err = models.DeactivateCurator(userID, database)
+				err = models.DeactivateCurator(userID, database)
 				if err != nil {
 					return nil
 				}
@@ -857,14 +857,14 @@ func newPost(voteID int64, author string, permalink string, chatID int64) {
 		
 		message, err := bot.Send(msg)
 		if err != nil {
-			log.Println("Не смогли отправить сообщение куратору " + curatorChatID)
+			log.Println(fmt.Sprintf("Не смогли отправить сообщение куратору %n", curatorChatID))
 		}		
 	}
 }
 
 func queueProcessor() {
-	for i := 0; i != nil; i++ {
-		votes, err := GetAllOpenedVotes(database)
+	for {
+		votes, err := models.GetAllOpenedVotes(database)
 		maxDiff := 0
 		var mostLikedPost models.Vote
 		if err != nil {
@@ -902,7 +902,7 @@ func queueProcessor() {
 	}
 }
 
-func checkFreshness(vote models.Vote) {
+func checkFreshness(vote models.Vote) bool {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
 	post, err := golos.Rpc.Database.GetContent(vote.Author, vote.Permalink)
