@@ -91,8 +91,8 @@ func GetAllActiveCurstorsChatID(db *sql.DB) ([]int, error) {
 func GetCuratorLastVotes(userID int, db *sql.DB) int {
 	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
 	var result int
-	row.Scan(&result)
-	if result {
+	err := row.Scan(&result)
+	if result != 0 && err != nil  {
 		return result	
 	} else {
 		return 0	
@@ -100,7 +100,7 @@ func GetCuratorLastVotes(userID int, db *sql.DB) int {
 }
 
 func GetAllActiveCurstorsID(db *sql.DB) ([]int, error) {
-	var IDs int
+	var IDs []int
 	rows, err := db.Query("SELECT user_id FROM curators WHERE active = 1")
 	if err != nil {
 		return IDs, err
