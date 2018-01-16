@@ -28,36 +28,35 @@ func ActivateCurator(userID int, db *sql.DB) error {
 	return err
 }
 
-func GetLastCuratorVotes(userID int, db *sql.DB) (int, error) {
+func GetLastCuratorVotes(userID int, db *sql.DB) (result int, err error) {
 	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
-	var result *int
-	err = row.Scan(&result)
+	err := row.Scan(&result)
 	return result, err
 }
 
-func IncrementCuratorVotes(userID int, db *sql.DB) {
+func IncrementCuratorVotes(userID int, db *sql.DB) error {
 	row, err := db.Exec("SELECT total_votes, last_votes FROM curators WHERE user_id = ?", userID)
-	var totalVotes *int
-	var lastVotes *int
+	var totalVotes int
+	var lastVotes int
 	err = row.Scan(&totalVotes, &lastVotes)
-	_, err := db.Exec("UPDATE curators SET total_votes = ?, last_votes = ? WHERE user_id = ?", 
+	_, err = db.Exec("UPDATE curators SET total_votes = ?, last_votes = ? WHERE user_id = ?", 
 			  totalVotes+1, lastVotes+1, userID)
 	return err
 }
 
 func IsCuratorExists(userID int, db *sql.DB) bool {
 	row := db.QueryRow("SELECT user_id FROM curators WHERE user_id = ?", userID)
-	var result *int
+	var result int
 	row.Scan(&result)
 	return result != nil
 }
 
-func CleanAllLastVotes(db *sql.DB) {
+func CleanAllLastVotes(db *sql.DB) error {
 	_, err := db.Exec("UPDATE curators SET last_votes = 0")
 	return err	
 }
 
-func IsActiveCurator(userID int, db *sql.DB) {
+func IsActiveCurator(userID int, db *sql.DB) bool {
 	row := db.QueryRow("SELECT active FROM curators WHERE user_id = ?", userID)
 	var result *int
 	row.Scan(&result)
@@ -84,7 +83,7 @@ func GetAllActiveCurstorsChatID(db *sql.DB) (chatIDs []int, err error) {
 	return chatIDs, err
 }
 
-func GetCuratorLastVotes(userID int, db *sql.DB) {
+func GetCuratorLastVotes(userID int, db *sql.DB) int {
 	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
 	var result *int
 	row.Scan(&result)
