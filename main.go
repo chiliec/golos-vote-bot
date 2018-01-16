@@ -365,7 +365,7 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			if checkUniqueness(post.body, voteModel) {
+			if checkUniqueness(post.Body, voteModel) {
 				go newPost(voteID, author, permalink, chatID)
 			}
 			
@@ -468,7 +468,7 @@ func processMessage(update tgbotapi.Update) error {
 			}
 		case state.Action == buttonWannaCurate:
 			if update.Message.Text == "Я все понял, все еще хочу курировать" {
-				if models.ActivateCurator(userId, database) != nil {
+				if models.ActivateCurator(userID, database) != nil {
 					return nil
 				}
 				msg.Text = "Отлично, теперь ты можешь участвовать в курировании постов"
@@ -708,6 +708,7 @@ func checkUniqueness(text string, voteModel models.Vote) bool {
 		// если дошли сюда, то выходим из цикла
 		break
 	}
+	return false
 }
 
 func sendComment(author string, permalink string, text string) error {
@@ -838,8 +839,12 @@ func checkAuthority() {
 	}
 }
 
-func newPost(voteID int, author string, permalink string, chatID int) {
-	curatorChatIDs := models.GetAllActiveCurstorsChatID(database)
+func newPost(voteID int64, author string, permalink string, chatID int64) {
+	curatorChatIDs, err := models.GetAllActiveCurstorsChatID(database)
+	if err != nil {
+		log.Println(err.Error())
+		return
+	}
 	curateText := "Новый пост - новая оценка. Курируй, куратор\n" + helpers.GetInstantViewLink(author, permalink)
 	for _, curatorChatID := range curatorChatIDs {
 		if curatorChatID == chatID {
