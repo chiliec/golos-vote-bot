@@ -691,7 +691,6 @@ func checkUniqueness(voteModel models.Vote) bool {
 				return
 			}
 			return false
-			}
 		} else {
 			random := func(min, max int) int {
 				rand.Seed(time.Now().Unix())
@@ -858,8 +857,7 @@ func newPost(voteID int, author string, permalink string, chatID int) {
 	}
 }
 
-func queueProcessor()
-{
+func queueProcessor() {
 	for i := 0; i != nil; i++ {
 		votes, err := GetAllOpenedVotes(database)
 		maxDiff := 0
