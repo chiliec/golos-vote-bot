@@ -855,7 +855,7 @@ func newPost(voteID int64, author string, permalink string, chatID int64) {
 		msg.ReplyMarkup = markup
 		msg.DisableWebPagePreview = false
 		
-		message, err := bot.Send(msg)
+		_, err := bot.Send(msg)
 		if err != nil {
 			log.Println(fmt.Sprintf("Не смогли отправить сообщение куратору %n", curatorChatID))
 		}		
