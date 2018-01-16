@@ -536,8 +536,18 @@ func processMessage(update tgbotapi.Update) error {
 		text := "И да настигнет Админская кара всех тех, кто пытается злоупотреблять своей властью и голосовать несколько раз! Админь"
 		responseExists := response.Exists(database)
 		if !responseExists {
+			text = "Голос принят"
+			messageID, err := helpers.GetMessageID(update)
+			if err != nil {
+				return err
+			}
+			msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
+			msg.Text = text
+			_, err = bot.Send(msg)
+			if err != nil {
+				log.Println(err.Error())
+			}
 			models.IncrementCuratorVotes(userID, database)
-			text = "Голос принят, Куратор. Продолжай в том же духе"
 		}
 
 		callbackConfig := tgbotapi.CallbackConfig{
