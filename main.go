@@ -242,7 +242,7 @@ func processMessage(update tgbotapi.Update) error {
 			state.Action = buttonInformation
 		case update.Message.Text == buttonWannaCurate:
 			if models.IsCuratorExists(userID, database) {
-				if models.IsCuratorActive(userID, database) {
+				if models.IsActiveCurator(userID, database) {
 					msg.Text = "Ты уже являешься куратором"
 				} else {
 					state.Action = buttonWannaCurate
@@ -365,7 +365,7 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
-			if checkUniqueness(voteModel) {
+			if checkUniqueness(post.body, voteModel) {
 				go newPost(voteID, author, permalink, chatID)
 			}
 			
@@ -468,7 +468,7 @@ func processMessage(update tgbotapi.Update) error {
 			}
 		case state.Action == buttonWannaCurate:
 			if update.Message.Text == "Я все понял, все еще хочу курировать" {
-				if models.ActivateCurator(UserId, database) {
+				if models.ActivateCurator(userId, database) != nil {
 					return nil
 				}
 				msg.Text = "Отлично, теперь ты можешь участвовать в курировании постов"
@@ -596,16 +596,16 @@ func removeUser(bot *tgbotapi.BotAPI, chatID int64, userID int) error {
 }
 
 // https://text.ru/api-check/manual
-func checkUniqueness(voteModel models.Vote) bool {
+func checkUniqueness(text string, voteModel models.Vote) bool {
 	token := config.TextRuToken
 	if len(config.TextRuToken) == 0 {
-		return
+		return false
 	}
 
 	text = strip.StripTags(text)
 
 	if len(text) < config.MinimumPostLength {
-		return
+		return false
 	}
 
 	cut := func(text string, to int) string {
@@ -628,17 +628,17 @@ func checkUniqueness(voteModel models.Vote) bool {
 	req, err := http.NewRequest("POST", "http://api.text.ru/post", strings.NewReader(form.Encode()))
 	if err != nil {
 		log.Println(err.Error())
-		return
+		return false
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Println(err.Error())
-		return
+		return false
 	}
 	if resp.StatusCode != 200 {
 		log.Println("статус не 200")
-		return
+		return false
 	}
 	type Uid struct {
 		TextUid string `json:"text_uid"`
@@ -648,7 +648,7 @@ func checkUniqueness(voteModel models.Vote) bool {
 	jsonParser.Decode(&uid)
 	if len(uid.TextUid) == 0 {
 		log.Println("Не распарсили text_uid")
-		return
+		return false
 	}
 	step := 0
 	for step < 50 {
@@ -665,7 +665,7 @@ func checkUniqueness(voteModel models.Vote) bool {
 		resp, err := client.Do(req)
 		if err != nil {
 			log.Println(err.Error())
-			return
+			return false
 		}
 		type Result struct {
 			TextUnique string `json:"text_unique"`
@@ -680,7 +680,7 @@ func checkUniqueness(voteModel models.Vote) bool {
 		textUnique, err := strconv.ParseFloat(result.TextUnique, 32)
 		if err != nil {
 			log.Println(err.Error())
-			return
+			return false
 		}
 		log.Println(textUnique)
 		if textUnique < 20 {
@@ -688,7 +688,7 @@ func checkUniqueness(voteModel models.Vote) bool {
 			_, err := voteModel.Save(database)
 			if err != nil {
 				log.Println(err.Error())
-				return
+				return false
 			}
 			return false
 		} else {
