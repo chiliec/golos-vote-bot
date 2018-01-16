@@ -36,8 +36,12 @@ func GetLastCuratorVotes(userID int, db *sql.DB) (int, error) {
 }
 
 func IncrementCuratorVotes(userID int, db *sql.DB) {
-	_, err := db.Exec("UPDATE curators SET (total_votes, last_votes) = "+
-			  "(SELECT total_votes, last_votes FROM curators WHERE user_id = ?) WHERE user_id = ?", userID, userID)
+	row, err := db.Exec("SELECT total_votes, last_votes FROM curators WHERE user_id = ?", userID)
+	var totalVotes *int
+	var lastVotes *int
+	err = row.Scan(&totalVotes, &lastVotes)
+	_, err := db.Exec("UPDATE curators SET total_votes = ?, last_votes = ? WHERE user_id = ?", 
+			  totalVotes+1, lastVotes+1, userID)
 	return err
 }
 
@@ -78,4 +82,31 @@ func GetAllActiveCurstorsChatID(db *sql.DB) (chatIDs []int, err error) {
 		}
 	}
 	return chatIDs, err
+}
+
+func GetCuratorLastVotes(userID int, db *sql.DB) {
+	row := db.QueryRow("SELECT last_votes FROM curators WHERE user_id = ?", userID)
+	var result *int
+	row.Scan(&result)
+	if result {
+		return result	
+	} else {
+		return 0	
+	}
+}
+
+func GetAllActiveCurstorsID(db *sql.DB) (IDs []int, err error) {
+	rows, err := db.Query("SELECT user_id FROM curators WHERE active = 1")
+	if err != nil {
+		return IDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var result *int
+		err := rows.Scan(&result)
+		if err == nil {
+			IDs = append(IDs, result)
+		}
+	}
+	return IDs, err
 }
