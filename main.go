@@ -918,7 +918,7 @@ func checkFreshness(vote models.Vote) bool {
 func freshnessPolice() {
 	for {
 		var vote models.Vote
-		row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
+		row := database.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
 				   "WHERE completed = 0 ORDER BY date LIMIT 1")
 		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
 		if !checkFreshness(vote) {
