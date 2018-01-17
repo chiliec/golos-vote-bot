@@ -835,7 +835,7 @@ func queueProcessor() {
 			mostLikedPost.Save(database)
 			continue
 		}
-		time.Sleep(config.VotingDelay * time.Minute)
+		time.Sleep(60 * time.Minute)
 	}
 }
 
@@ -860,6 +860,6 @@ func freshnessPolice() {
 			vote.Completed = true
 			vote.Save(database)
 		}
-		time.Sleep(config.PoliceDelay * time.Hour)
+		time.Sleep(3 * time.Hour)
 	}
 }
