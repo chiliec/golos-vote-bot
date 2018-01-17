@@ -10,6 +10,7 @@ type Credential struct {
 	UserName string
 	Power    int
 	Active   bool
+	Curater	 bool
 }
 
 func (credential Credential) Save(db *sql.DB) (bool, error) {
@@ -18,8 +19,9 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 		"chat_id" +
 		"user_name," +
 		"power," +
-		"active) " +
-		"values(?, ?, ?, ?)")
+		"active," +
+		"curates" +
+		"values(?, ?, ?, ?, ?)")
 	defer prepare.Close()
 	if err != nil {
 		return false, err
@@ -29,7 +31,8 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 		credential.ChatID,
 		credential.UserName,
 		credential.Power,
-		credential.Active)
+		credential.Active
+		credential.Curates)
 	if err != nil {
 		return false, err
 	}
@@ -37,26 +40,26 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 }
 
 func GetCredentialByUserID(userID int, db *sql.DB) (credential Credential, err error) {
-	row := db.QueryRow("SELECT user_id, chat_id, user_name, power, active FROM credentials WHERE user_id = ?", userID)
-	err = row.Scan(&credential.UserID, &credential.ChatID, &credential.UserName, &credential.Power, &credential.Active)
+	row := db.QueryRow("SELECT user_id, chat_id, user_name, power, active, curates FROM credentials WHERE user_id = ?", userID)
+	err = row.Scan(&credential.UserID, &credential.ChatID, &credential.UserName, &credential.Power, &credential.Active, &credential.Curates)
 	return credential, err
 }
 
 func GetCredentialByUserName(userName string, db *sql.DB) (credential Credential, err error) {
-	row := db.QueryRow("SELECT user_id, chat_id, user_name, power, active FROM credentials WHERE user_name = ?", userName)
-	err = row.Scan(&credential.UserID, &credential.ChatID, &credential.UserName, &credential.Power, &credential.Active)
+	row := db.QueryRow("SELECT user_id, chat_id, user_name, power, active, curates FROM credentials WHERE user_name = ?", userName)
+	err = row.Scan(&credential.UserID, &credential.ChatID, &credential.UserName, &credential.Power, &credential.Active, &credential.Curates)
 	return credential, err
 }
 
 func GetAllActiveCredentials(db *sql.DB) (credentials []Credential, err error) {
-	rows, err := db.Query("SELECT user_id, chat_id, user_name, power, active FROM credentials")
+	rows, err := db.Query("SELECT user_id, chat_id, user_name, power, active, curates FROM credentials")
 	if err != nil {
 		return credentials, err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var credential Credential
-		err := rows.Scan(&credential.UserID, &credential.ChatID, &credential.UserName, &credential.Power, &credential.Active)
+		err := rows.Scan(&credential.UserID, &credential.ChatID, &credential.UserName, &credential.Power, &credential.Active, &credential.Curates)
 		if err == nil && credential.Active {
 			credentials = append(credentials, credential)
 		}
