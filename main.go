@@ -497,7 +497,6 @@ func processMessage(update tgbotapi.Update) error {
 			if err != nil {
 				log.Println(err.Error())
 			}
-			models.IncrementCuratorVotes(userID, database)
 		}
 
 		callbackConfig := tgbotapi.CallbackConfig{
