@@ -108,7 +108,6 @@ func createTables(db *sql.DB) error {
 		query := `
 		ALTER TABLE credentials ADD curates BOOLEAN NOT NULL CHECK (curates IN (0,1)) DEFAULT 0;
 		ALTER TABLE credentials ADD chat_id BIGINT NOT NULL DEFAULT 0;
-		UPDATE credentials SET active = 0 WHERE active = 1;
 		`
 		_, err = tx.Exec(query)
 		if err != nil {
