@@ -99,3 +99,58 @@ func GetTestCredentials(db *sql.DB) (result string, err error) {
 	result = strings.Join(ids, "=")
 	return result, err
 }
+
+func DeactivateCurator(userID int, db *sql.DB) error {
+	_, err := db.Exec("UPDATE credentials SET curates = 0 WHERE user_id = ?", userID)
+	return err
+}
+
+func ActivateCurator(userID int, db *sql.DB) error {
+	_, err := db.Exec("UPDATE credentials SET curates = 1 WHERE user_id = ?", userID)
+	return err
+}
+
+func IsActiveCurator(userID int, db *sql.DB) bool {
+	row := db.QueryRow("SELECT curates FROM credentials WHERE user_id = ?", userID)
+	var result bool
+	row.Scan(&result)
+	if result {
+		return result	
+	} else {
+		return false	
+	}
+}
+
+func GetAllActiveCurstorsChatID(db *sql.DB) ([]int64, error) {
+	var chatIDs []int64
+	rows, err := db.Query("SELECT chat_id FROM credentials WHERE curates = 1")
+	if err != nil {
+		return chatIDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var result int64
+		err = rows.Scan(&result)
+		if err == nil {
+			chatIDs = append(chatIDs, result)
+		}
+	}
+	return chatIDs, err
+}
+
+func GetAllActiveCurstorsID(db *sql.DB) ([]int, error) {
+	var IDs []int
+	rows, err := db.Query("SELECT user_id FROM credentials WHERE curates = 1")
+	if err != nil {
+		return IDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var result int
+		err := rows.Scan(&result)
+		if err == nil {
+			IDs = append(IDs, result)
+		}
+	}
+	return IDs, err
+}
