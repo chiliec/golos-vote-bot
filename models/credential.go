@@ -10,7 +10,7 @@ type Credential struct {
 	UserName string
 	Power    int
 	Active   bool
-	Curater	 bool
+	Curates	 bool
 }
 
 func (credential Credential) Save(db *sql.DB) (bool, error) {
