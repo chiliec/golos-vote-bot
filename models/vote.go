@@ -85,7 +85,7 @@ func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
 }
 
 func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
-	row := database.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
 				   "WHERE completed = 0 ORDER BY date LIMIT 1")
 	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
 	return vote
