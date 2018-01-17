@@ -13,9 +13,11 @@ func TestDbCredentials(t *testing.T) {
 	}
 	credential := Credential{
 		UserID:   1,
+		ChatID:	  0,
 		UserName: "chiliec",
 		Power:    100,
 		Active:   true,
+		Curates:  false,
 	}
 	_, err = credential.Save(database)
 	if err != nil {
@@ -37,9 +39,11 @@ func TestCredential_UpdatePower(t *testing.T) {
 	}
 	credential := Credential{
 		UserID:   1,
+		ChatID:	  0,
 		UserName: "chiliec",
 		Power:    100,
 		Active:   true,
+		Curates:  false,
 	}
 	_, err = credential.Save(database)
 	if err != nil {
@@ -73,9 +77,11 @@ func TestIsActiveCredential(t *testing.T) {
 	}
 	credential := Credential{
 		UserID:   1,
+		ChatID:	  0,
 		UserName: "chiliec",
 		Power:    100,
 		Active:   true,
+		Curates:  false,
 	}
 	exists := IsActiveCredential(credential.UserID, database)
 	if exists {
