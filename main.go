@@ -509,14 +509,6 @@ func processMessage(update tgbotapi.Update) error {
 		if voteModel.Completed {
 			return nil
 		}
-		if voteModel.UserID == userID {
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Твоя власть не безгранична, Куратор. Нельзя голосовать за свой же пост!",
-			}
-			bot.AnswerCallbackQuery(config)
-			return nil
-		}
 
 		isGood := action == "good"
 		response := models.Response{
@@ -864,20 +856,8 @@ func queueProcessor() {
 			continue
 		}
 		for _, vote := range votes {
-			responses, err := models.GetAllResponsesForVoteID(vote.VoteID, database)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
 			var positives, negatives int
-			for _, response := range responses {
-				if response.Result {
-					positives = positives + 1
-				} else {
-					negatives = negatives + 1
-				}
-			}
+			positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
 			if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
 				maxDiff = positives-negatives
 				mostLikedPost = vote
@@ -890,7 +870,7 @@ func queueProcessor() {
 			mostLikedPost.Save(database)
 			continue
 		}
-		time.Sleep(time.Hour)
+		time.Sleep(config.VotingDelay * time.Minute)
 	}
 }
 
@@ -908,15 +888,13 @@ func checkFreshness(vote models.Vote) bool {
 }
 
 func freshnessPolice() {
+	var vote models.Vote
 	for {
-		var vote models.Vote
-		row := database.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
-				   "WHERE completed = 0 ORDER BY date LIMIT 1")
-		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		vote = models.GetOldestOpenedVote(database)
 		if !checkFreshness(vote) {
 			vote.Completed = true
 			vote.Save(database)
 		}
-		time.Sleep(3 * time.Hour)
+		time.Sleep(config.PoliceDelay * time.Hour)
 	}
 }
