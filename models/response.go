@@ -59,7 +59,7 @@ func GetNumResponsesVoteID(voteID int64, db *sql.DB) (int, int) {
 	var neg int
 	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE vote_id = ? AND result = 1", voteID)
 	row.Scan(&pos)
-	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE vote_id = ? AND result = 0", voteID)
+	row = db.QueryRow("SELECT COUNT(*) FROM responses WHERE vote_id = ? AND result = 0", voteID)
 	row.Scan(&neg)
 	return pos, neg
 }
