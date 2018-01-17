@@ -31,7 +31,7 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 		credential.ChatID,
 		credential.UserName,
 		credential.Power,
-		credential.Active
+		credential.Active,
 		credential.Curates)
 	if err != nil {
 		return false, err
