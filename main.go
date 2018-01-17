@@ -160,42 +160,8 @@ func processMessage(update tgbotapi.Update) error {
 						}
 					}
 				}
-			case "newtest":
-				if userID == config.Tester {
-					if len(update.Message.CommandArguments()) > 0 {
-						newID, _ := strconv.Atoi(update.Message.CommandArguments())
-						oldID := userID
-						_, err := models.GetCredentialByUserID(newID, database)
-						if newID < 0 && err == sql.ErrNoRows {
-							models.REFchangeUserID(database, oldID, newID)
-							models.CREDchangeUserID(database, oldID, newID)
-							msg.Text = "Done "
-						}
-					}
-				}
-			case "switch":
-				if userID == config.Tester {
-					if len(update.Message.CommandArguments()) > 0 {
-						newID, _ := strconv.Atoi(update.Message.CommandArguments())
-						oldID := userID
-						_, err := models.GetCredentialByUserID(newID, database)
-						if newID < 0 && err != sql.ErrNoRows {
-							models.REFchangeUserID(database, oldID, 0)
-							models.REFchangeUserID(database, newID, oldID)
-							models.REFchangeUserID(database, 0, newID)
-							models.CREDchangeUserID(database, oldID, 0)
-							models.CREDchangeUserID(database, newID, oldID)
-							models.CREDchangeUserID(database, 0, newID)
-							msg.Text = "Done"
-						}
-					}
-				}
-			case "info":
-				if userID == config.Tester {
-					msg.Text, _ = models.GetTestCredentials(database)
-				}
-			}
 			state.Action = update.Message.Command()
+			}
 		case update.Message.Text == buttonAddKey:
 			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golostools.github.io/golos-vote-bot/ "+
 				"(или через [форму от vik'a](https://golos.cf/multi/)), "+
@@ -241,23 +207,14 @@ func processMessage(update tgbotapi.Update) error {
 				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
 		case update.Message.Text == buttonWannaCurate:
-			if models.IsCuratorExists(userID, database) {
-				if models.IsActiveCurator(userID, database) {
-					msg.Text = "Ты уже являешься куратором"
-				} else {
-					state.Action = buttonWannaCurate
-					msg.Text = "Правила курирования"
-				}
+			if models.IsActiveCurator(userID, database) {
+				msg.Text = "Ты уже являешься куратором"
 			} else {
-				_, err = models.NewCurator(userID, chatID, database)
-				if err != nil {
-					return nil
-				}
 				state.Action = buttonWannaCurate
 				msg.Text = "Правила курирования"
 			}
 		case update.Message.Text == buttonStopCurate:
-			if models.IsCuratorExists(userID, database) {
+			if models.IsActiveCurator(userID, database) {
 				err = models.DeactivateCurator(userID, database)
 				if err != nil {
 					return nil
@@ -375,6 +332,7 @@ func processMessage(update tgbotapi.Update) error {
 			login = strings.Trim(login, "@")
 			credential := models.Credential{
 				UserID:   userID,
+				ChatID:	  chatID,
 				UserName: login,
 				Power:    100,
 				Active:   true,
@@ -517,14 +475,6 @@ func processMessage(update tgbotapi.Update) error {
 		if voteModel.Completed {
 			return nil
 		}
-		if voteModel.UserID == userID {
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Твоя власть не безгранична, Куратор. Нельзя голосовать за свой же пост!",
-			}
-			bot.AnswerCallbackQuery(config)
-			return nil
-		}
 
 		isGood := action == "good"
 		response := models.Response{
@@ -547,7 +497,6 @@ func processMessage(update tgbotapi.Update) error {
 			if err != nil {
 				log.Println(err.Error())
 			}
-			models.IncrementCuratorVotes(userID, database)
 		}
 
 		callbackConfig := tgbotapi.CallbackConfig{
@@ -872,20 +821,8 @@ func queueProcessor() {
 			continue
 		}
 		for _, vote := range votes {
-			responses, err := models.GetAllResponsesForVoteID(vote.VoteID, database)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
 			var positives, negatives int
-			for _, response := range responses {
-				if response.Result {
-					positives = positives + 1
-				} else {
-					negatives = negatives + 1
-				}
-			}
+			positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
 			if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
 				maxDiff = positives-negatives
 				mostLikedPost = vote
@@ -898,7 +835,7 @@ func queueProcessor() {
 			mostLikedPost.Save(database)
 			continue
 		}
-		time.Sleep(time.Hour)
+		time.Sleep(config.VotingDelay * time.Minute)
 	}
 }
 
@@ -916,15 +853,13 @@ func checkFreshness(vote models.Vote) bool {
 }
 
 func freshnessPolice() {
+	var vote models.Vote
 	for {
-		var vote models.Vote
-		row := database.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
-				   "WHERE completed = 0 ORDER BY date LIMIT 1")
-		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		vote = models.GetOldestOpenedVote(database)
 		if !checkFreshness(vote) {
 			vote.Completed = true
 			vote.Save(database)
 		}
-		time.Sleep(3 * time.Hour)
+		time.Sleep(config.PoliceDelay * time.Hour)
 	}
 }
