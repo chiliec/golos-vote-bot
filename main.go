@@ -241,23 +241,14 @@ func processMessage(update tgbotapi.Update) error {
 				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
 		case update.Message.Text == buttonWannaCurate:
-			if models.IsCuratorExists(userID, database) {
-				if models.IsActiveCurator(userID, database) {
-					msg.Text = "Ты уже являешься куратором"
-				} else {
-					state.Action = buttonWannaCurate
-					msg.Text = "Правила курирования"
-				}
+			if models.IsActiveCurator(userID, database) {
+				msg.Text = "Ты уже являешься куратором"
 			} else {
-				_, err = models.NewCurator(userID, chatID, database)
-				if err != nil {
-					return nil
-				}
 				state.Action = buttonWannaCurate
 				msg.Text = "Правила курирования"
 			}
 		case update.Message.Text == buttonStopCurate:
-			if models.IsCuratorExists(userID, database) {
+			if models.IsActiveCurator(userID, database) {
 				err = models.DeactivateCurator(userID, database)
 				if err != nil {
 					return nil
@@ -375,6 +366,7 @@ func processMessage(update tgbotapi.Update) error {
 			login = strings.Trim(login, "@")
 			credential := models.Credential{
 				UserID:   userID,
+				ChatID:	  chatID,
 				UserName: login,
 				Power:    100,
 				Active:   true,
