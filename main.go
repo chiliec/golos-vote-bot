@@ -241,23 +241,14 @@ func processMessage(update tgbotapi.Update) error {
 				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
 			state.Action = buttonInformation
 		case update.Message.Text == buttonWannaCurate:
-			if models.IsCuratorExists(userID, database) {
-				if models.IsActiveCurator(userID, database) {
-					msg.Text = "Ты уже являешься куратором"
-				} else {
-					state.Action = buttonWannaCurate
-					msg.Text = "Правила курирования"
-				}
+			if models.IsActiveCurator(userID, database) {
+				msg.Text = "Ты уже являешься куратором"
 			} else {
-				_, err = models.NewCurator(userID, chatID, database)
-				if err != nil {
-					return nil
-				}
 				state.Action = buttonWannaCurate
 				msg.Text = "Правила курирования"
 			}
 		case update.Message.Text == buttonStopCurate:
-			if models.IsCuratorExists(userID, database) {
+			if models.IsActiveCurator(userID, database) {
 				err = models.DeactivateCurator(userID, database)
 				if err != nil {
 					return nil
@@ -375,6 +366,7 @@ func processMessage(update tgbotapi.Update) error {
 			login = strings.Trim(login, "@")
 			credential := models.Credential{
 				UserID:   userID,
+				ChatID:	  chatID,
 				UserName: login,
 				Power:    100,
 				Active:   true,
@@ -515,14 +507,6 @@ func processMessage(update tgbotapi.Update) error {
 
 		voteModel := models.GetVote(database, voteID)
 		if voteModel.Completed {
-			return nil
-		}
-		if voteModel.UserID == userID {
-			config := tgbotapi.CallbackConfig{
-				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Твоя власть не безгранична, Куратор. Нельзя голосовать за свой же пост!",
-			}
-			bot.AnswerCallbackQuery(config)
 			return nil
 		}
 
@@ -872,20 +856,8 @@ func queueProcessor() {
 			continue
 		}
 		for _, vote := range votes {
-			responses, err := models.GetAllResponsesForVoteID(vote.VoteID, database)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-
 			var positives, negatives int
-			for _, response := range responses {
-				if response.Result {
-					positives = positives + 1
-				} else {
-					negatives = negatives + 1
-				}
-			}
+			positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
 			if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
 				maxDiff = positives-negatives
 				mostLikedPost = vote
@@ -898,7 +870,7 @@ func queueProcessor() {
 			mostLikedPost.Save(database)
 			continue
 		}
-		time.Sleep(time.Hour)
+		time.Sleep(config.VotingDelay * time.Minute)
 	}
 }
 
@@ -916,15 +888,13 @@ func checkFreshness(vote models.Vote) bool {
 }
 
 func freshnessPolice() {
+	var vote models.Vote
 	for {
-		var vote models.Vote
-		row := database.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
-				   "WHERE completed = 0 ORDER BY date LIMIT 1")
-		row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		vote = models.GetOldestOpenedVote(database)
 		if !checkFreshness(vote) {
 			vote.Completed = true
 			vote.Save(database)
 		}
-		time.Sleep(3 * time.Hour)
+		time.Sleep(config.PoliceDelay * time.Hour)
 	}
 }
