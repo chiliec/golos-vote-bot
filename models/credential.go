@@ -2,8 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"strconv"
-	"strings"
 )
 
 type Credential struct {
