@@ -30,6 +30,8 @@ type Config struct {
 	IgnoreVP               bool     `json:"ignore_vp"`
 	BannedTags             []string `json:"banned_tags"`
 	Censorship             bool     `json:"censorship"`
+	VotingDelay	       int	`json:"voting_delay"`
+	PoliceDelay	       int	`json:"police_delay"`
 }
 
 func LoadConfiguration(file string, config *Config) error {
