@@ -36,6 +36,8 @@ func TestLoadConfiguration(t *testing.T) {
 		IgnoreVP:               true,
 		BannedTags:             []string{"test", "test1"},
 		Censorship:             false,
+		VotingDelay:		60,
+		PoliceDelay:		3,
 	}
 	if !reflect.DeepEqual(defaultConfig, config) {
 		t.Error("Конфиги не совпадают")
