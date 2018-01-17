@@ -22,5 +22,7 @@
   "repository": "https://github.com/GolosTools/golos-vote-bot",
   "ignore_vp": true,
   "banned_tags": ["test", "test1"],
-  "censorship": false
+  "censorship": false,
+  "voting_delay": 60,
+  "police_delay": 4,
 }
