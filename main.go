@@ -144,16 +144,16 @@ func processMessage(update tgbotapi.Update) error {
 					if err == sql.ErrNoRows {
 						decodedString, err := base64.URLEncoding.DecodeString(update.Message.CommandArguments())
 						if err == nil {
-							// TODO: проверить существование этого юзера
-							referrer := string(decodedString)
-							if !models.IsReferrerExists(referrer, database) {
-								referral := models.Referral{UserID: userID, Referrer: referrer, Completed: false}
+							referrer, err := models.GetCredentialByUserName(decodedString, database)
+							if err == nil && referrer.Active == true {
+								referral := models.Referral{UserID: userID, 
+											    Referrer: decodedString, 
+											    UserName: " ", 
+											    Completed: false}
 								_, err = referral.Save(database)
 								if err != nil {
 									log.Println("не сохранили реферала: " + err.Error())
 								}
-							} else {
-								log.Println("Реферал уже привлекался ранее")
 							}
 						} else {
 							log.Printf("не смогли раскодировать строку %s", update.Message.CommandArguments())
@@ -173,6 +173,7 @@ func processMessage(update tgbotapi.Update) error {
 			if isActive {
 				credential, err := models.GetCredentialByUserID(userID, database)
 				credential.Active = false
+				credential.Curates = false
 				result, err := credential.Save(database)
 				if true == result && err == nil {
 					msg.Text = "Отлично, я больше не буду использовать твой аккаунт при курировании постов. " +
@@ -360,8 +361,10 @@ func processMessage(update tgbotapi.Update) error {
 				if hasPostingAuth {
 					// send referral fee
 					referral, err := models.GetReferralByUserID(userID, database)
-					if err == nil && false == referral.Completed {
+					if err == nil && referral.Completed == false {
 						if err = referral.SetCompleted(database); err == nil {
+							referral.UserName == credential.UserName
+							referral.Save(database)
 							_, err = models.GetCredentialByUserName(credential.UserName, database)
 							if err == sql.ErrNoRows {
 								go sendReferralFee(referral.Referrer, credential.UserName)
@@ -373,8 +376,8 @@ func processMessage(update tgbotapi.Update) error {
 					if err != nil {
 						return err
 					}
-					msg.Text = "Поздравляю, теперь ты полноправный куратор! " +
-						"Присоединяйся к нашей группе для участия в курировании: " + config.GroupLink
+					msg.Text = "Поздравляю, теперь ты почти полноправный участник! " +
+						"Присоединяйся к нашей группе, там бывает весело: " + config.GroupLink
 					state.Action = "successAuth"
 				} else {
 					msg.Text = fmt.Sprintf("Доступ у этого аккаунта для меня отсутствует. "+
