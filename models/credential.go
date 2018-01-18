@@ -20,7 +20,7 @@ func (credential Credential) Save(db *sql.DB) (bool, error) {
 		"user_name," +
 		"power," +
 		"active," +
-		"curates" +
+		"curates) " +
 		"values(?, ?, ?, ?, ?, ?)")
 	defer prepare.Close()
 	if err != nil {
