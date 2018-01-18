@@ -323,7 +323,7 @@ func processMessage(update tgbotapi.Update) error {
 				break
 			}
 
-			newVote, err := voteModel.Save(database)
+			voteID, err := voteModel.Save(database)
 			if err != nil {
 				return err
 			}
@@ -331,7 +331,7 @@ func processMessage(update tgbotapi.Update) error {
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
 			if checkUniqueness(post.Body, voteModel) {
-				go newPost(newVote.VoteID, author, permalink, chatID)
+				go newPost(voteID, author, permalink, chatID)
 			}
 			
 			return nil
