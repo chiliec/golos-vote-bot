@@ -842,6 +842,7 @@ func queueProcessor() {
 		} else {
 			mostLikedPost.Completed = true
 			mostLikedPost.Save(database)
+			go excuseUs(mostLikedPost)
 			continue
 		}
 		time.Sleep(60 * time.Minute)
@@ -868,7 +869,31 @@ func freshnessPolice() {
 		if !checkFreshness(vote) {
 			vote.Completed = true
 			vote.Save(database)
+			go excuseUs(vote)
 		}
 		time.Sleep(3 * time.Hour)
 	}
+}
+
+func excuseUs(vote models.Vote) {
+	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
+	if positives >= negatives {
+		text := fmt.Sprintf("Прости, %d, твой пост так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
+				    "получше и кураторы обязательно это оценят", vote.Author)
+		msg := tgbotapi.NewMessage(config.GroupID, text)
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		vote.Rejected = true
+		vote.Save()
+		text := fmt.Sprintf("Пoст %d/%d был отклонен кураторами", vote.Author, vote.Permalink)
+		msg := tgbotapi.NewMessage(config.GroupID, text)
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	return
 }
