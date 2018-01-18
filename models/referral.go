@@ -5,6 +5,7 @@ import "database/sql"
 type Referral struct {
 	UserID    int
 	Referrer  string
+	Referral  string
 	Completed bool
 }
 
@@ -12,6 +13,7 @@ func (referral Referral) Save(db *sql.DB) (bool, error) {
 	prepare, err := db.Prepare("INSERT INTO referrals(" +
 		"user_id," +
 		"referrer," +
+		"referral," +
 		"completed) " +
 		"values(?, ?, ?)")
 	defer prepare.Close()
@@ -21,6 +23,7 @@ func (referral Referral) Save(db *sql.DB) (bool, error) {
 	_, err = prepare.Exec(
 		referral.UserID,
 		referral.Referrer,
+		referral.Referral,
 		referral.Completed)
 	if err != nil {
 		return false, err
@@ -34,14 +37,14 @@ func (referral Referral) SetCompleted(db *sql.DB) error {
 }
 
 func GetReferralByUserID(userID int, db *sql.DB) (referral Referral, err error) {
-	row := db.QueryRow("SELECT user_id, referrer, completed FROM referrals WHERE user_id = ?", userID)
-	err = row.Scan(&referral.UserID, &referral.Referrer, &referral.Completed)
+	row := db.QueryRow("SELECT user_id, referrer, referral, completed FROM referrals WHERE user_id = ?", userID)
+	err = row.Scan(&referral.UserID, &referral.Referrer, &referral.Referral, &referral.Completed)
 	return referral, err
 }
 
-func IsReferrerExists(referrer string, db *sql.DB) bool {
+func IsReferralExists(referral string, db *sql.DB) bool {
 	row := db.QueryRow("SELECT user_id FROM referrals "+
-		"WHERE referrer = ?", referrer)
+		"WHERE referrer = ?", referral)
 	var userID *int
 	row.Scan(&userID)
 	return userID != nil
