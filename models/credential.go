@@ -108,9 +108,11 @@ func GetAllActiveCurstorsChatID(db *sql.DB) ([]int64, error) {
 	for rows.Next() {
 		var result int64
 		err = rows.Scan(&result)
-		if err == nil {
-			chatIDs = append(chatIDs, result)
+		if err != nil {
+    			log.Println(err.Error())
+   			continue
 		}
+		chatIDs = append(chatIDs, result)
 	}
 	return chatIDs, err
 }
@@ -125,9 +127,11 @@ func GetAllActiveCurstorsID(db *sql.DB) ([]int, error) {
 	for rows.Next() {
 		var result int
 		err := rows.Scan(&result)
-		if err == nil {
-			IDs = append(IDs, result)
+		if err != nil {
+			log.Println(err.Error())
+   			continue
 		}
+		IDs = append(IDs, result)
 	}
 	return IDs, err
 }
