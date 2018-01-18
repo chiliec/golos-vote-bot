@@ -72,25 +72,30 @@ func GetOpenedVotesCount(db *sql.DB) (count int) {
 	return count
 }
 
-func GetTodayVotesCountForUserID(userID int, db *sql.DB) (count int) {
-	row := db.QueryRow("SELECT COUNT(*) FROM votes "+
-		"WHERE date > datetime('now','-1 day') AND user_id = ?", userID)
-	row.Scan(&count)
-	return count
-}
-
-func GetLastVote(db *sql.DB) (vote Vote) {
-	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes " +
-			   "ORDER BY ID DESC LIMIT 1")
-	row.Scan(&vote.VoteID,
-		 &vote.UserID,
-		 &vote.Author,
-		 &vote.Permalink,
-		 &vote.Percent,
-		 &vote.Completed,
-		 &vote.Rejected,
-		 &vote.Date)
-	return vote
+func GetLastVotesForUserID(userID int, num int, db *sql.DB) (votes []Vote, err error) {
+	if num == 0 {
+		rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes "+
+				      "WHERE user_id = ? ORDER BY ID DESC", userID)
+	} else {
+		rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes "+
+				      "WHERE user_id = ? ORDER BY ID DESC LIMIT ?", userID, num)
+	}
+	if err != nil {
+		return votes, err
+	}
+	for rows.Next() {
+		var vote Vote
+		rows.Scan(&vote.VoteID,
+			  &vote.UserID,
+			  &vote.Author,
+			  &vote.Permalink,
+			  &vote.Percent,
+			  &vote.Completed,
+			  &vote.Rejected,
+			  &vote.Date)
+		votes = append(votes, vote)
+	}
+	return votes
 }
 
 func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
@@ -128,3 +133,21 @@ func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
 		 &vote.Date)
 	return vote
 }
+
+func coumputeIntervalForUser(userID int, mode int, baseInterval int,db *sql.DB) (time.Duration, error) {
+	var userVotes []Vote
+	good := 0
+	all := 0
+	time.Duration(seconds)*time.Second
+	baseInterval := 24 * time.Hour / maxAllowedPosts
+	userVotes, err = GetLastVotesForUserID(userID, mode.Parameter, db)
+	for _, vote := range lastUserVotes {
+		if !vote.Rejected {
+			good = good + 1
+		}
+		all = all + 1
+	}
+	
+}
+// mode 0 - computes interval based on all posts
+// mode n - computes interval based on last n posts
