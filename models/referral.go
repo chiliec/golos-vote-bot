@@ -5,7 +5,7 @@ import "database/sql"
 type Referral struct {
 	UserID    int
 	Referrer  string
-	Referral  string
+	UserName  string
 	Completed bool
 }
 
@@ -23,7 +23,7 @@ func (referral Referral) Save(db *sql.DB) (bool, error) {
 	_, err = prepare.Exec(
 		referral.UserID,
 		referral.Referrer,
-		referral.Referral,
+		referral.UserName,
 		referral.Completed)
 	if err != nil {
 		return false, err
@@ -38,7 +38,7 @@ func (referral Referral) SetCompleted(db *sql.DB) error {
 
 func GetReferralByUserID(userID int, db *sql.DB) (referral Referral, err error) {
 	row := db.QueryRow("SELECT user_id, referrer, referral, completed FROM referrals WHERE user_id = ?", userID)
-	err = row.Scan(&referral.UserID, &referral.Referrer, &referral.Referral, &referral.Completed)
+	err = row.Scan(&referral.UserID, &referral.Referrer, &referral.UserName, &referral.Completed)
 	return referral, err
 }
 
