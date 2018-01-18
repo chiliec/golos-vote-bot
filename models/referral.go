@@ -46,8 +46,3 @@ func IsReferrerExists(referrer string, db *sql.DB) bool {
 	row.Scan(&userID)
 	return userID != nil
 }
-
-func REFchangeUserID(db *sql.DB, oldID int, newID int) error {
-	_, err := db.Exec("UPDATE referrals SET user_id = ? WHERE user_id = ?", newID, oldID)
-	return err
-}
