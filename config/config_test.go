@@ -31,7 +31,6 @@ func TestLoadConfiguration(t *testing.T) {
 		Domains:                []string{"golos.io", "golos.blog", "goldvoice.club", "golosd.com", "golosdb.com", "mapala.net", "newbie.goloses.ru"},
 		Chain:                  "golos",
 		Rpc:                    []string{"wss://ws.golos.io", "wss://api.golos.cf"},
-		Tester:                 0,
 		Repository:             "https://github.com/GolosTools/golos-vote-bot",
 		IgnoreVP:               true,
 		BannedTags:             []string{"test", "test1"},
