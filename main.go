@@ -160,6 +160,13 @@ func processMessage(update tgbotapi.Update) error {
 						}
 					}
 				}
+			case "actualize":
+				credential, err := models.GetCredentialByUserID(userID, database)
+				if err == nil && credential.ChatID == 0 {
+					credential.ChatID = chatID
+					credential.Save(database)
+					msg.Text = "Готово. Данные обновлены"
+				}
 			state.Action = update.Message.Command()
 			}
 		case update.Message.Text == buttonAddKey:
