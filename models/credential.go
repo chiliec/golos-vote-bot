@@ -95,11 +95,7 @@ func IsActiveCurator(userID int, db *sql.DB) bool {
 	row := db.QueryRow("SELECT curates FROM credentials WHERE user_id = ?", userID)
 	var result bool
 	row.Scan(&result)
-	if result {
-		return result	
-	} else {
-		return false	
-	}
+	return result
 }
 
 func GetAllActiveCurstorsChatID(db *sql.DB) ([]int64, error) {
