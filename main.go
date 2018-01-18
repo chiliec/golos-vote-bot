@@ -160,13 +160,6 @@ func processMessage(update tgbotapi.Update) error {
 						}
 					}
 				}
-			case "actualize":
-				credential, err := models.GetCredentialByUserID(userID, database)
-				if err == nil && credential.ChatID == 0 {
-					credential.ChatID = chatID
-					credential.Save(database)
-					msg.Text = "Готово. Данные обновлены"
-				}
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
@@ -217,6 +210,11 @@ func processMessage(update tgbotapi.Update) error {
 			if models.IsActiveCurator(userID, database) {
 				msg.Text = "Ты уже являешься куратором"
 			} else {
+				credential, err := models.GetCredentialByUserID(userID, database)
+				if err == nil && credential.ChatID == 0 {
+					credential.ChatID = chatID
+					credential.Save(database)
+				}
 				state.Action = buttonWannaCurate
 				msg.Text = "Правила курирования"
 			}
@@ -343,6 +341,7 @@ func processMessage(update tgbotapi.Update) error {
 				UserName: login,
 				Power:    100,
 				Active:   true,
+				Curates:  false,
 			}
 
 			golos := golosClient.NewApi(config.Rpc, config.Chain)
