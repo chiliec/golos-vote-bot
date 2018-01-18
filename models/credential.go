@@ -16,7 +16,7 @@ type Credential struct {
 func (credential Credential) Save(db *sql.DB) (bool, error) {
 	prepare, err := db.Prepare("INSERT OR REPLACE INTO credentials(" +
 		"user_id," +
-		"chat_id" +
+		"chat_id," +
 		"user_name," +
 		"power," +
 		"active," +
