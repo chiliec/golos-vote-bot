@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"log"
 )
 
 type Credential struct {
