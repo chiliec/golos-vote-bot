@@ -19,6 +19,7 @@ func TestDbVotes(t *testing.T) {
 		Permalink: "/example/permalink",
 		Percent:   100,
 		Completed: false,
+		Rejected:  false,
 		Date:      time.Now(),
 	}
 	vote.Save(database)
@@ -45,6 +46,7 @@ func TestGetLastVote(t *testing.T) {
 		Permalink: "/example/permalink",
 		Percent:   100,
 		Completed: false,
+		Rejected:  false,
 		Date:      time.Now(),
 	}
 	firstVote.Save(database)
@@ -55,6 +57,7 @@ func TestGetLastVote(t *testing.T) {
 		Permalink: "/example/permalink2",
 		Percent:   100,
 		Completed: true,
+		Rejected:  false,
 		Date:      time.Now(),
 	}
 	secondVote.Save(database)
