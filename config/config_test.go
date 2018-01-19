@@ -22,7 +22,7 @@ func TestLoadConfiguration(t *testing.T) {
 		RequiredVotes:          4,
 		InitialUserRating:      10,
 		MaximumOpenedVotes:     3,
-		MaximumUserVotesPerDay: 2,
+		PostingInterval:	480,
 		MinimumPostLength:      1000,
 		Developer:              "@babin",
 		GroupID:                -1001143551951,

@@ -144,16 +144,16 @@ func processMessage(update tgbotapi.Update) error {
 					if err == sql.ErrNoRows {
 						decodedString, err := base64.URLEncoding.DecodeString(update.Message.CommandArguments())
 						if err == nil {
-							// TODO: проверить существование этого юзера
-							referrer := string(decodedString)
-							if !models.IsReferrerExists(referrer, database) {
-								referral := models.Referral{UserID: userID, Referrer: referrer, Completed: false}
+							referrer, err := models.GetCredentialByUserName(string(decodedString), database)
+							if err == nil && referrer.Active == true {
+								referral := models.Referral{UserID: userID, 
+											    Referrer: string(decodedString), 
+											    UserName: " ", 
+											    Completed: false}
 								_, err = referral.Save(database)
 								if err != nil {
 									log.Println("не сохранили реферала: " + err.Error())
 								}
-							} else {
-								log.Println("Реферал уже привлекался ранее")
 							}
 						} else {
 							log.Printf("не смогли раскодировать строку %s", update.Message.CommandArguments())
@@ -173,6 +173,7 @@ func processMessage(update tgbotapi.Update) error {
 			if isActive {
 				credential, err := models.GetCredentialByUserID(userID, database)
 				credential.Active = false
+				credential.Curates = false
 				result, err := credential.Save(database)
 				if true == result && err == nil {
 					msg.Text = "Отлично, я больше не буду использовать твой аккаунт при курировании постов. " +
@@ -246,13 +247,10 @@ func processMessage(update tgbotapi.Update) error {
 				return nil
 			}
 
-			if models.GetTodayVotesCountForUserID(userID, database) >= config.MaximumUserVotesPerDay {
-				msg.Text = "Лимит твоих постов на сегодня превышен. Приходи завтра!"
-				break
-			}
-
-			if models.GetLastVote(database).UserID == userID {
-				msg.Text = "Нельзя предлагать два поста подряд. Наберись терпения!"
+			lastVote := models.GetLastVoteForUserID(userID, database)
+			userInterval := models.ComputeIntervalForUser(userID, 10, config.PostingInterval, database)
+			if time.Since(lastVote.Date) < userInterval {
+				msg.Text = "Прошло слишком мало времени после твоего последнего поста. Наберись терпения!"
 				break
 			}
 
@@ -312,6 +310,8 @@ func processMessage(update tgbotapi.Update) error {
 				Author:    author,
 				Permalink: permalink,
 				Percent:   percent,
+				Completed: false,
+				Rejected:  false,
 				Date:      time.Now(),
 			}
 
@@ -360,8 +360,10 @@ func processMessage(update tgbotapi.Update) error {
 				if hasPostingAuth {
 					// send referral fee
 					referral, err := models.GetReferralByUserID(userID, database)
-					if err == nil && false == referral.Completed {
+					if err == nil && referral.Completed == false {
 						if err = referral.SetCompleted(database); err == nil {
+							referral.UserName == credential.UserName
+							referral.Save(database)
 							_, err = models.GetCredentialByUserName(credential.UserName, database)
 							if err == sql.ErrNoRows {
 								go sendReferralFee(referral.Referrer, credential.UserName)
@@ -373,8 +375,8 @@ func processMessage(update tgbotapi.Update) error {
 					if err != nil {
 						return err
 					}
-					msg.Text = "Поздравляю, теперь ты полноправный куратор! " +
-						"Присоединяйся к нашей группе для участия в курировании: " + config.GroupLink
+					msg.Text = "Поздравляю, теперь ты почти полноправный участник! " +
+						"Присоединяйся к нашей группе, там бывает весело: " + config.GroupLink
 					state.Action = "successAuth"
 				} else {
 					msg.Text = fmt.Sprintf("Доступ у этого аккаунта для меня отсутствует. "+
@@ -839,6 +841,7 @@ func queueProcessor() {
 		} else {
 			mostLikedPost.Completed = true
 			mostLikedPost.Save(database)
+			go excuseUs(mostLikedPost)
 			continue
 		}
 		time.Sleep(60 * time.Minute)
@@ -865,7 +868,31 @@ func freshnessPolice() {
 		if !checkFreshness(vote) {
 			vote.Completed = true
 			vote.Save(database)
+			go excuseUs(vote)
 		}
 		time.Sleep(3 * time.Hour)
 	}
+}
+
+func excuseUs(vote models.Vote) {
+	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
+	if positives >= negatives {
+		text := fmt.Sprintf("Прости, %d, твой пост так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
+				    "получше и кураторы обязательно это оценят", vote.Author)
+		msg := tgbotapi.NewMessage(config.GroupID, text)
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Println(err)
+		}
+	} else {
+		vote.Rejected = true
+		vote.Save(database)
+		text := fmt.Sprintf("Пoст %d/%d был отклонен кураторами", vote.Author, vote.Permalink)
+		msg := tgbotapi.NewMessage(config.GroupID, text)
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+	return
 }
