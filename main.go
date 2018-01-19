@@ -272,7 +272,7 @@ func processMessage(update tgbotapi.Update) error {
 			}
 
 			isActive := models.IsActiveCredential(userID, database)
-			if isActive == false {
+			if !isActive {
 				msg.Text = "Предлагать посты для голосования могут только голосующие пользователи. Жулик не воруй!"
 				break
 			}
@@ -360,7 +360,7 @@ func processMessage(update tgbotapi.Update) error {
 				if hasPostingAuth {
 					// send referral fee
 					referral, err := models.GetReferralByUserID(userID, database)
-					if err == nil && referral.Completed == false {
+					if err == nil && !referral.Completed {
 						if err = referral.SetCompleted(database); err == nil {
 							referral.UserName = credential.UserName
 							referral.Save(database)
@@ -470,7 +470,7 @@ func processMessage(update tgbotapi.Update) error {
 			return err
 		}
 
-		if models.IsActiveCurator(userID, database) == false {
+		if !models.IsActiveCurator(userID, database) {
 			config := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
 				Text:            "Чекни свои привелегии. Ты не куратор!",
