@@ -25,7 +25,7 @@ func TestReferral_Save(t *testing.T) {
 		t.Error(err)
 	}
 	if referral != referralFromDb {
-		t.Error("Рефералы не совпадают")
+		t.Error("рефералы не совпадают")
 	}
 }
 
@@ -50,7 +50,7 @@ func TestReferral_SetCompleted(t *testing.T) {
 		t.Error(err)
 	}
 	if referralFromDb.Completed == true {
-		t.Error("Реферал не должен быть completed")
+		t.Error("реферал не должен быть completed")
 	}
 
 	referral.SetCompleted(database)
@@ -59,7 +59,7 @@ func TestReferral_SetCompleted(t *testing.T) {
 		t.Error(err)
 	}
 	if referralFromDb2.Completed != true {
-		t.Error("Реферал должен быть completed")
+		t.Error("реферал должен быть completed")
 	}
 }
 
@@ -70,7 +70,7 @@ func TestIsReferralExists(t *testing.T) {
 		t.Error(err)
 	}
 	if IsReferralExists(user, database) {
-		t.Error("Реферала не должно существовать")
+		t.Error("реферала не должно существовать")
 	}
 	referral := Referral{
 		UserID:    1,
@@ -83,6 +83,6 @@ func TestIsReferralExists(t *testing.T) {
 		t.Error(err)
 	}
 	if !IsReferralExists(user, database) {
-		t.Error("Реферал должен существовать")
+		t.Error("реферал должен существовать")
 	}
 }
