@@ -145,8 +145,7 @@ func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
 
 //computes interval based on last n posts
 func ComputeIntervalForUser(userID int, n int, baseInterval int,db *sql.DB) (time.Duration, error) {
-	good := 0
-	all := 0
+	var good, all int
 	userVotes, err := GetLastVotesForUserID(userID, n, db)
 	if err != nil {
 		return 0, err
