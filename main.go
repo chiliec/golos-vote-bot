@@ -144,10 +144,10 @@ func processMessage(update tgbotapi.Update) error {
 					if err == sql.ErrNoRows {
 						decodedString, err := base64.URLEncoding.DecodeString(update.Message.CommandArguments())
 						if err == nil {
-							referrer, err := models.GetCredentialByUserName(decodedString, database)
+							referrer, err := models.GetCredentialByUserName(string(decodedString), database)
 							if err == nil && referrer.Active == true {
 								referral := models.Referral{UserID: userID, 
-											    Referrer: decodedString, 
+											    Referrer: string(decodedString), 
 											    UserName: " ", 
 											    Completed: false}
 								_, err = referral.Save(database)
