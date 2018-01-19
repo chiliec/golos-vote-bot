@@ -15,7 +15,7 @@ func (referral Referral) Save(db *sql.DB) (bool, error) {
 		"referrer," +
 		"referral," +
 		"completed) " +
-		"values(?, ?, ?)")
+		"values(?, ?, ?, ?)")
 	defer prepare.Close()
 	if err != nil {
 		return false, err
