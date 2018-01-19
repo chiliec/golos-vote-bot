@@ -19,9 +19,13 @@ func TestDbVotes(t *testing.T) {
 		Permalink: "/example/permalink",
 		Percent:   100,
 		Completed: false,
+		Rejected:  false,
 		Date:      time.Now(),
 	}
-	vote.Save(database)
+	_, err = vote.Save(database)
+	if err != nil {
+		t.Error(err)
+	}
 	voteFromDb := GetVote(database, vote.VoteID)
 	if vote.Date.Unix() != voteFromDb.Date.Unix() {
 		t.Error("Даты не совпадают!")
@@ -33,7 +37,7 @@ func TestDbVotes(t *testing.T) {
 	}
 }
 
-func TestGetLastVote(t *testing.T) {
+func TestGetLastVotes(t *testing.T) {
 	database, err := db.InitDB("")
 	if err != nil {
 		t.Error(err)
@@ -45,21 +49,24 @@ func TestGetLastVote(t *testing.T) {
 		Permalink: "/example/permalink",
 		Percent:   100,
 		Completed: false,
+		Rejected:  false,
 		Date:      time.Now(),
 	}
 	firstVote.Save(database)
 	secondVote := Vote{
 		VoteID:    2,
-		UserID:    2,
+		UserID:    1,
 		Author:    "ExampleAuthor2",
 		Permalink: "/example/permalink2",
 		Percent:   100,
 		Completed: true,
+		Rejected:  false,
 		Date:      time.Now(),
 	}
 	secondVote.Save(database)
 
-	lastVote := GetLastVote(database)
+	lastVote := GetLastVoteForUserID(1, database)
+
 	if secondVote.Date.Unix() != lastVote.Date.Unix() {
 		t.Error("Даты не совпадают!")
 	}
