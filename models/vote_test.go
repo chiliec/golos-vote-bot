@@ -62,7 +62,7 @@ func TestGetLastVotes(t *testing.T) {
 	}
 	secondVote.Save(database)
 
-	lastVotes, err := GetLastVotesForUserID(1, database)
+	lastVotes, err := GetLastVoteForUserID(1, database)
 	lastVote := lastVotes[0]
 	if secondVote.Date.Unix() != lastVote.Date.Unix() {
 		t.Error("Даты не совпадают!")
