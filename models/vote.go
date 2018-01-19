@@ -95,7 +95,24 @@ func GetLastVotesForUserID(userID int, num int, db *sql.DB) (votes []Vote, err e
 			  &vote.Date)
 		votes = append(votes, vote)
 	}
-	return votes
+	return votes, err
+}
+
+func GetLastVoteForUserID(userID int, db *sql.DB) (vote Vote) {
+	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes "+
+				"WHERE user_id = ? ORDER BY ID DESC", userID)
+	if err != nil {
+		return vote
+	}
+	row.Scan(&vote.VoteID, 
+		 &vote.UserID, 
+		 &vote.Author, 
+		 &vote.Permalink, 
+		 &vote.Percent, 
+		 &vote.Completed, 
+		 &vote.Rejected, 
+		 &vote.Date)
+	return vote
 }
 
 func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
@@ -134,20 +151,23 @@ func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
 	return vote
 }
 
-func coumputeIntervalForUser(userID int, mode int, baseInterval int,db *sql.DB) (time.Duration, error) {
+func coumputeIntervalForUser(userID int, mode int, baseInterval int,db *sql.DB) (computedInterval time.Duration, err error) {
 	var userVotes []Vote
 	good := 0
 	all := 0
 	time.Duration(seconds)*time.Second
-	baseInterval := 24 * time.Hour / maxAllowedPosts
 	userVotes, err = GetLastVotesForUserID(userID, mode.Parameter, db)
+	if err != nil {
+		return computedInterval, err
+	}
 	for _, vote := range lastUserVotes {
 		if !vote.Rejected {
 			good = good + 1
 		}
 		all = all + 1
 	}
-	
+	computedInterval = time.Duration(baseInterval * all / good) * time.Minute
+	return computedInterval, err
 }
 // mode 0 - computes interval based on all posts
 // mode n - computes interval based on last n posts
