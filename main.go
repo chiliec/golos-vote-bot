@@ -148,7 +148,7 @@ func processMessage(update tgbotapi.Update) error {
 							if err == nil && referrer.Active == true {
 								referral := models.Referral{UserID: userID, 
 											    Referrer: string(decodedString), 
-											    UserName: " ", 
+											    UserName: "", 
 											    Completed: false}
 								_, err = referral.Save(database)
 								if err != nil {
