@@ -12,7 +12,8 @@ func TestReferral_Save(t *testing.T) {
 	}
 	referral := Referral{
 		UserID:    1,
-		Referrer:  "chiliec",
+		Referrer:  "worthless",
+		UserName:  "chiliec",
 		Completed: false,
 	}
 	_, err = referral.Save(database)
@@ -35,7 +36,8 @@ func TestReferral_SetCompleted(t *testing.T) {
 	}
 	referral := Referral{
 		UserID:    1,
-		Referrer:  "chiliec",
+		Referrer:  "worthless",
+		UserName:  "chiliec",
 		Completed: false,
 	}
 	_, err = referral.Save(database)
@@ -61,25 +63,26 @@ func TestReferral_SetCompleted(t *testing.T) {
 	}
 }
 
-func TestIsReferrerExists(t *testing.T) {
-	referrer := "chiliec"
+func TestIsReferralExists(t *testing.T) {
+	user := "chiliec"
 	database, err := db.InitDB("")
 	if err != nil {
 		t.Error(err)
 	}
-	if IsReferrerExists(referrer, database) {
-		t.Error("Реферера не должно существовать")
+	if IsReferralExists(user, database) {
+		t.Error("реферала не должно существовать")
 	}
 	referral := Referral{
 		UserID:    1,
-		Referrer:  referrer,
+		Referrer:  "worthless",
+		UserName:  user,
 		Completed: false,
 	}
 	_, err = referral.Save(database)
 	if err != nil {
 		t.Error(err)
 	}
-	if !IsReferrerExists(referrer, database) {
-		t.Error("Реферер должен существовать")
+	if !IsReferralExists(user, database) {
+		t.Error("реферал должен существовать")
 	}
 }
