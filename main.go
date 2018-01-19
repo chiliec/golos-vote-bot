@@ -889,7 +889,7 @@ func excuseUs(vote models.Vote) {
 		}
 	} else {
 		vote.Rejected = true
-		vote.Save()
+		vote.Save(database)
 		text := fmt.Sprintf("Пoст %d/%d был отклонен кураторами", vote.Author, vote.Permalink)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
 		_, err := bot.Send(msg)
