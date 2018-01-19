@@ -143,7 +143,7 @@ func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
 	return vote
 }
 
-func coumputeIntervalForUser(userID int, mode int, baseInterval int,db *sql.DB) (time.Duration, error) {
+func CoumputeIntervalForUser(userID int, mode int, baseInterval int,db *sql.DB) (time.Duration, error) {
 	good := 0
 	all := 0
 	userVotes, err := GetLastVotesForUserID(userID, mode, db)
