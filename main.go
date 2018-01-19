@@ -883,7 +883,7 @@ func excuseUs(vote models.Vote) {
 		text := fmt.Sprintf("Прости, %d, твой пост так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
 				    "получше и кураторы обязательно это оценят", vote.Author)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
-		_, err = bot.Send(msg)
+		_, err := bot.Send(msg)
 		if err != nil {
 			log.Println(err)
 		}
@@ -892,7 +892,7 @@ func excuseUs(vote models.Vote) {
 		vote.Save()
 		text := fmt.Sprintf("Пoст %d/%d был отклонен кураторами", vote.Author, vote.Permalink)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
-		_, err = bot.Send(msg)
+		_, err := bot.Send(msg)
 		if err != nil {
 			log.Println(err)
 		}
