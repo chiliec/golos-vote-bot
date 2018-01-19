@@ -249,9 +249,8 @@ func processMessage(update tgbotapi.Update) error {
 
 			lastVote := models.GetLastVoteForUserID(userID, database)
 			userInterval := models.ComputeIntervalForUser(userID, 10, config.PostingInterval, database)
-			if (time.Now() - lastVote.Date) < userInterval {
-			
-				msg.Text = "Лимит твоих постов на сегодня превышен. Приходи завтра!"
+			if time.Since(lastVote.Date) < userInterval {
+				msg.Text = "Прошло слишком мало времени после твоего последнего поста. Наберись терпения!"
 				break
 			}
 
