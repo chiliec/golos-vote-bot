@@ -44,7 +44,7 @@ func GetReferralByUserID(userID int, db *sql.DB) (referral Referral, err error) 
 
 func IsReferralExists(referral string, db *sql.DB) bool {
 	row := db.QueryRow("SELECT user_id FROM referrals "+
-		"WHERE referrer = ?", referral)
+		"WHERE referral = ?", referral)
 	var userID *int
 	row.Scan(&userID)
 	return userID != nil
