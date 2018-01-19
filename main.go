@@ -362,7 +362,7 @@ func processMessage(update tgbotapi.Update) error {
 					referral, err := models.GetReferralByUserID(userID, database)
 					if err == nil && referral.Completed == false {
 						if err = referral.SetCompleted(database); err == nil {
-							referral.UserName == credential.UserName
+							referral.UserName = credential.UserName
 							referral.Save(database)
 							_, err = models.GetCredentialByUserName(credential.UserName, database)
 							if err == sql.ErrNoRows {
