@@ -108,7 +108,7 @@ func createTables(db *sql.DB) error {
 		query := `
 		ALTER TABLE credentials ADD curates BOOLEAN NOT NULL CHECK (curates IN (0,1)) DEFAULT 0;
 		ALTER TABLE credentials ADD chat_id BIGINT NOT NULL DEFAULT 0;
-		ALTER TABLE referrals ADD referral TEXT NOT NULL DEFAULT ' ';
+		ALTER TABLE referrals ADD referral TEXT NOT NULL DEFAULT 'no';
 		ALTER TABLE votes ADD rejected BOOLEAN NOT NULL CHECK (rejected IN (0,1)) DEFAULT 0;
 		`
 		_, err = tx.Exec(query)
