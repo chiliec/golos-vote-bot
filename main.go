@@ -247,13 +247,11 @@ func processMessage(update tgbotapi.Update) error {
 				return nil
 			}
 
-			if models.GetTodayVotesCountForUserID(userID, database) >= config.MaximumUserVotesPerDay {
+			lastVote := models.GetLastVoteForUserID(userID, database)
+			userInterval := models.ComputeIntervalForUser(userID, 10, config.PostingInterval, database)
+			if (time.Now() - lastVote.Date) < userInterval {
+			
 				msg.Text = "Лимит твоих постов на сегодня превышен. Приходи завтра!"
-				break
-			}
-
-			if models.GetLastVote(database).UserID == userID {
-				msg.Text = "Нельзя предлагать два поста подряд. Наберись терпения!"
 				break
 			}
 
