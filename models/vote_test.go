@@ -22,7 +22,10 @@ func TestDbVotes(t *testing.T) {
 		Rejected:  false,
 		Date:      time.Now(),
 	}
-	vote.Save(database)
+	_, err := vote.Save(database)
+	if err != nil {
+		t.Error(err)
+	}
 	voteFromDb := GetVote(database, vote.VoteID)
 	if vote.Date.Unix() != voteFromDb.Date.Unix() {
 		t.Error("Даты не совпадают!")
