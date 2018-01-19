@@ -9,7 +9,7 @@
   "required_votes": 4,
   "initial_user_rating": 10,
   "maximum_opened_votes": 3,
-  "maximum_user_votes_per_day": 2,
+  "posting_interval": 480,
   "minimum_post_length": 1000,
   "developer": "@babin",
   "group_id": -1001143551951,
