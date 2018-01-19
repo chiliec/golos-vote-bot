@@ -376,6 +376,7 @@ func processMessage(update tgbotapi.Update) error {
 						return err
 					}
 					msg.Text = "Поздравляю, теперь ты почти полноправный участник! " +
+						"Чтобы вообще все плюшки заиметь. Можешь стать еще и куратором. " +
 						"Присоединяйся к нашей группе, там бывает весело: " + config.GroupLink
 					state.Action = "successAuth"
 				} else {
