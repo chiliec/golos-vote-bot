@@ -12,12 +12,21 @@ type Vote struct {
 	Permalink string
 	Percent   int
 	Completed bool
+	Rejected  bool
 	Date      time.Time
 }
 
 func GetVote(db *sql.DB, voteID int64) (vote Vote) {
-	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes WHERE id = ?", voteID)
-	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, rejected, date " +
+			   "FROM votes WHERE id = ?", voteID)
+	row.Scan(&vote.VoteID, 
+		 &vote.UserID, 
+		 &vote.Author, 
+		 &vote.Permalink, 
+		 &vote.Percent, 
+		 &vote.Completed, 
+		 &vote.Rejected, 
+		 &vote.Date)
 	return vote
 }
 
@@ -28,12 +37,19 @@ func (vote Vote) Save(db *sql.DB) (int64, error) {
 		"permalink," +
 		"percent," +
 		"completed," +
+		"rejected," +
 		"date) " +
-		"values(?, ?, ?, ?, ?, ?)")
+		"values(?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return 0, err
 	}
-	result, err := prepare.Exec(vote.UserID, vote.Author, vote.Permalink, vote.Percent, vote.Completed, vote.Date)
+	result, err := prepare.Exec(vote.UserID,
+				    vote.Author, 
+				    vote.Permalink, 
+				    vote.Percent, 
+				    vote.Completed, 
+				    vote.Rejected, 
+				    vote.Date)
 	if err != nil {
 		return 0, err
 	}
@@ -56,28 +72,57 @@ func GetOpenedVotesCount(db *sql.DB) (count int) {
 	return count
 }
 
-func GetTodayVotesCountForUserID(userID int, db *sql.DB) (count int) {
-	row := db.QueryRow("SELECT COUNT(*) FROM votes "+
-		"WHERE date > datetime('now','-1 day') AND user_id = ?", userID)
-	row.Scan(&count)
-	return count
-}
-
-func GetLastVote(db *sql.DB) (vote Vote) {
-	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
-		"ORDER BY ID DESC LIMIT 1")
-	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
-	return vote
-}
-
-func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
-	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, date FROM votes WHERE completed = 0")
+func GetLastVotesForUserID(userID int, num int, db *sql.DB) (votes []Vote, err error) {
+	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes "+
+				"WHERE user_id = ? ORDER BY ID DESC LIMIT ?", userID, num)
 	if err != nil {
 		return votes, err
 	}
 	for rows.Next() {
 		var vote Vote
-		rows.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+		rows.Scan(&vote.VoteID,
+			  &vote.UserID,
+			  &vote.Author,
+			  &vote.Permalink,
+			  &vote.Percent,
+			  &vote.Completed,
+			  &vote.Rejected,
+			  &vote.Date)
+		votes = append(votes, vote)
+	}
+	return votes, err
+}
+
+func GetLastVoteForUserID(userID int, db *sql.DB) (vote Vote) {
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes "+
+				"WHERE user_id = ? ORDER BY ID DESC LIMIT 1", userID)
+	row.Scan(&vote.VoteID, 
+		 &vote.UserID, 
+		 &vote.Author, 
+		 &vote.Permalink, 
+		 &vote.Percent, 
+		 &vote.Completed, 
+		 &vote.Rejected, 
+		 &vote.Date)
+	return vote
+}
+
+func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
+	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, date " +
+			      "FROM votes WHERE completed = 0")
+	if err != nil {
+		return votes, err
+	}
+	for rows.Next() {
+		var vote Vote
+		rows.Scan(&vote.VoteID,
+			  &vote.UserID,
+			  &vote.Author,
+			  &vote.Permalink,
+			  &vote.Percent,
+			  &vote.Completed,
+			  &vote.Rejected,
+			  &vote.Date)
 		votes = append(votes, vote)
 	}
 	
@@ -85,8 +130,36 @@ func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
 }
 
 func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
-	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, date FROM votes " +
-				   "WHERE completed = 0 ORDER BY date LIMIT 1")
-	row.Scan(&vote.VoteID, &vote.UserID, &vote.Author, &vote.Permalink, &vote.Percent, &vote.Completed, &vote.Date)
+	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes " +
+			   "WHERE completed = 0 ORDER BY date LIMIT 1")
+	row.Scan(&vote.VoteID,
+		 &vote.UserID,
+		 &vote.Author,
+		 &vote.Permalink,
+		 &vote.Percent,
+		 &vote.Completed,
+		 &vote.Rejected,
+		 &vote.Date)
 	return vote
 }
+
+func ComputeIntervalForUser(userID int, mode int, baseInterval int,db *sql.DB) (time.Duration, error) {
+	good := 0
+	all := 0
+	userVotes, err := GetLastVotesForUserID(userID, mode, db)
+	if err != nil {
+		return 0, err
+	}
+	for _, vote := range userVotes {
+		if !vote.Rejected {
+			good = good + 1
+		}
+		all = all + 1
+	}
+	if good == 0 {
+		good = 1
+	}
+	computedInterval := time.Duration(baseInterval * all / good) * time.Minute
+	return computedInterval, err
+}
+// mode = n - computes interval based on last n posts
