@@ -34,7 +34,7 @@ func TestDbVotes(t *testing.T) {
 	}
 }
 
-func TestGetLastVote(t *testing.T) {
+func TestGetLastVotes(t *testing.T) {
 	database, err := db.InitDB("")
 	if err != nil {
 		t.Error(err)
@@ -52,7 +52,7 @@ func TestGetLastVote(t *testing.T) {
 	firstVote.Save(database)
 	secondVote := Vote{
 		VoteID:    2,
-		UserID:    2,
+		UserID:    1,
 		Author:    "ExampleAuthor2",
 		Permalink: "/example/permalink2",
 		Percent:   100,
@@ -62,7 +62,8 @@ func TestGetLastVote(t *testing.T) {
 	}
 	secondVote.Save(database)
 
-	lastVote := GetLastVote(database)
+	lastVotes, err := GetLastVotesForUserID(1, database)
+	lastVote := lastVotes[0]
 	if secondVote.Date.Unix() != lastVote.Date.Unix() {
 		t.Error("Даты не совпадают!")
 	}
