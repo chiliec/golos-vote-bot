@@ -96,9 +96,6 @@ func GetLastVotesForUserID(userID int, num int, db *sql.DB) (votes []Vote, err e
 func GetLastVoteForUserID(userID int, db *sql.DB) (vote Vote) {
 	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, rejected, date FROM votes "+
 				"WHERE user_id = ? ORDER BY ID DESC LIMIT 1", userID)
-	if err != nil {
-		return vote
-	}
 	row.Scan(&vote.VoteID, 
 		 &vote.UserID, 
 		 &vote.Author, 
