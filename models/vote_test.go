@@ -22,7 +22,7 @@ func TestDbVotes(t *testing.T) {
 		Rejected:  false,
 		Date:      time.Now(),
 	}
-	_, err := vote.Save(database)
+	_, err = vote.Save(database)
 	if err != nil {
 		t.Error(err)
 	}
