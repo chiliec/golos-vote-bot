@@ -116,6 +116,7 @@ func createTables(db *sql.DB) error {
 			type TEXT NOT NULL,
 			date DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
+		INSERT INTO events(type) VALUES('POST');
 		`
 		_, err = tx.Exec(query)
 		if err != nil {
