@@ -10,8 +10,8 @@ func WnnaSleepTill(weekday time.Weekday, hour, min int) (sleepTime time.Duration
 	nowWeekday := now.Weekday()
 	var diff int
 	if nowWeekday == weekday {
-		if time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).sub(time.Now()) > 0 {
-			return time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).sub(time.Now())
+		if time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).Sub(time.Now()) > 0 {
+			return time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).Sub(time.Now())
 		} else {
 			diff = 7
 		}
