@@ -12,6 +12,6 @@ func GetLastRewardDate(db *sql.DB) (lastReportDate time.Time) {
 }
 
 func NewRewardDistributed(db *sql.DB) (int64, error) {
-	result, err := db.Exec("INSERT INTO events (type) VALUES ('REWARD')")
+	result, _ := db.Exec("INSERT INTO events (type) VALUES ('REWARD')")
 	return result.LastInsertId()
 }
