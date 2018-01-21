@@ -63,3 +63,37 @@ func GetNumResponsesVoteID(voteID int64, db *sql.DB) (int, int) {
 	row.Scan(&neg)
 	return pos, neg
 }
+
+func GetNumResponsesForMotivation(date time.Time, db *sql.DB) (num int, err error) {
+	row, err := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ?", date)
+	if err != nil {
+		return num, err
+	}
+	defer rows.Close()
+	row.Scan(&num)
+	return num, nil
+}
+
+func GetUserIDsForMotivation(date time.Time, db *sql.DB) (userIDs []int, err error) {
+	rows, err := db.Query("SELECT distinct user_id FROM responses WHERE date > ?", date)
+	if err != nil {
+		return userIDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID int
+		rows.Scan(&userID)
+		userIDs = append(userIDs, userID)
+	}
+	return userIDs, nil
+}
+
+func GetNumResponsesForMotivationForUserID(userID int, date time.Time, db *sql.DB) (num int, err error) {
+	row, err := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ? AND user_id = ?", date, userID)
+	if err != nil {
+		return num, err
+	}
+	defer rows.Close()
+	row.Scan(&num)
+	return num, nil
+}
