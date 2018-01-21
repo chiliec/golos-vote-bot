@@ -35,6 +35,7 @@ func TestLoadConfiguration(t *testing.T) {
 		IgnoreVP:               true,
 		BannedTags:             []string{"test", "test1"},
 		Censorship:             false,
+		ReportTags:		[]string{"тест", "тест1"},
 	}
 	if !reflect.DeepEqual(defaultConfig, config) {
 		t.Error("Конфиги не совпадают")
