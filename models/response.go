@@ -60,7 +60,6 @@ func GetNumResponsesVoteID(voteID int64, db *sql.DB) (int, int) {
 
 func GetNumResponsesForMotivation(date time.Time, db *sql.DB) (num int) {
 	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ?", date)
-	defer rows.Close()
 	row.Scan(&num)
 	return num
 }
@@ -81,7 +80,6 @@ func GetUserIDsForMotivation(date time.Time, db *sql.DB) (userIDs []int, err err
 
 func GetNumResponsesForMotivationForUserID(userID int, date time.Time, db *sql.DB) (num int) {
 	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ? AND user_id = ?", date, userID)
-	defer row.Close()
 	row.Scan(&num)
 	return num
 }
