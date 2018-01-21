@@ -86,6 +86,8 @@ func main() {
 	go checkAuthority()
 	go queueProcessor()
 	go freshnessPolice()
+	go suportedPostsReporter()
+	go curationMotivator()
 
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
@@ -312,6 +314,7 @@ func processMessage(update tgbotapi.Update) error {
 				Percent:   percent,
 				Completed: false,
 				Rejected:  false,
+				Addled:	   false,
 				Date:      time.Now(),
 			}
 
@@ -868,6 +871,7 @@ func freshnessPolice() {
 		vote = models.GetOldestOpenedVote(database)
 		if !checkFreshness(vote) {
 			vote.Completed = true
+			vote.Addled = true
 			vote.Save(database)
 			go excuseUs(vote)
 		}
@@ -878,8 +882,8 @@ func freshnessPolice() {
 func excuseUs(vote models.Vote) {
 	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
 	if positives >= negatives {
-		text := fmt.Sprintf("Прости, %d, твой пост так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
-				    "получше и кураторы обязательно это оценят", vote.Author)
+		text := fmt.Sprintf("Прости, %d, твой пост (%d/%d) так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
+				    "получше и кураторы обязательно это оценят", vote.Author, vote.Author, vote.Permalink)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
 		_, err := bot.Send(msg)
 		if err != nil {
@@ -897,3 +901,61 @@ func excuseUs(vote models.Vote) {
 	}
 	return
 }
+
+func suportedPostsReporter() {
+	time.Sleep(models.WannaSleepOneDay(12, 0)) // Спать до 12:00 следующего дня
+	for {
+		supportedPosts, err:= models.GetTrulyCompletedVotesSince(models.GetLastReportDate(database), database)
+		if err != nil {
+			log.Println(err)
+		} else {
+			//Я понятия не имею, как постить пост
+			//err := golos.Post(config.Account, title, body, permlink, "", post_image string, config.ReportTags, v *PC_Vote, o *PC_Options)
+			//if err != nil {
+			//	log.Println(err)
+			//}
+		}
+		time.Sleep(24 * time.Hour)
+	}
+}
+
+func curationMotivator() {
+	time.Sleep(models.WnnaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья 
+	for {
+		lastRewardDate := models.GetLastRewardDate(database)
+		allResponses := models.GetNumResponsesForMotivation(lastRewardDate, database)
+		var needResponsesToBeRewarded int
+		
+		golos := golosClient.NewApi(config.Rpc, config.Chain)
+		defer golos.Rpc.Close()
+		accounts, err := golos.Rpc.Database.GetAccounts([]string{config.Account})
+		if err != nil {
+			log.Println(err)
+		} else {
+			gold, _ := strconv.Atoi(strings.Replace(strings.Replace(accounts[0].SbdBalance, ".", "", 1), " GBG", "", 1))
+			if gold < allResponses {
+				needResponsesToBeRewarded = allResponses / gold
+			} else {
+				needResponsesToBeRewarded = 1
+			}
+			curatorIDs, err := models.GetUserIDsForMotivation(lastRewardDate, database)
+			if err != nil {
+				log.Println(err)
+			} else {
+				for _, userID := range curatorIDs {
+					credential, err := models.GetCredentialByUserID(userID, database)
+					if !credential.Active || err != nil {
+						continue
+					}
+					curatorResponses := models.GetNumResponsesForMotivationForUserID(userID, lastRewardDate, database)
+					goldForCurator := curatorResponses / needResponsesToBeRewarded
+					ammount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
+					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
+					
+				}
+			}
+		}
+		time.Sleep(7 * 24 * time.Hour)
+	}
+}
+
