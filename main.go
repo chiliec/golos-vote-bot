@@ -312,6 +312,7 @@ func processMessage(update tgbotapi.Update) error {
 				Percent:   percent,
 				Completed: false,
 				Rejected:  false,
+				Addled:	   false,
 				Date:      time.Now(),
 			}
 
@@ -868,6 +869,7 @@ func freshnessPolice() {
 		vote = models.GetOldestOpenedVote(database)
 		if !checkFreshness(vote) {
 			vote.Completed = true
+			vote.Addled = true
 			vote.Save(database)
 			go excuseUs(vote)
 		}
@@ -878,8 +880,8 @@ func freshnessPolice() {
 func excuseUs(vote models.Vote) {
 	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
 	if positives >= negatives {
-		text := fmt.Sprintf("Прости, %d, твой пост так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
-				    "получше и кураторы обязательно это оценят", vote.Author)
+		text := fmt.Sprintf("Прости, %d, твой пост (%d/%d) так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
+				    "получше и кураторы обязательно это оценят", vote.Author, vote.Author, vote.Permalink)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
 		_, err := bot.Send(msg)
 		if err != nil {
@@ -897,3 +899,31 @@ func excuseUs(vote models.Vote) {
 	}
 	return
 }
+
+func suportedPostsReporter() {
+	time.Sleep(models.WannaSleepOneDay(12, 0)) // Спать до 12:00 следующего дня
+	for {
+		supportedPosts, err:= models.GetTrulyCompletedVotesSince(GetLastReportDate(database), database)
+		if err != nil {
+			log.Println(err)
+		} else {
+			//Я понятия не имею, как постить пост
+			//err := golos.Post(author_name, title, body, permlink, ptag, post_image string, tags []string, v *PC_Vote, o *PC_Options)
+			//if err != nil {
+			//	log.Println(err)
+			//}
+		}
+		time.Sleep(24 * time.Hour)
+	}
+}
+
+func curationMotivator() {
+	time.Sleep(models.WnnaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья 
+	for {
+		
+		//Раздать награды кураторам
+		
+		time.Sleep(7 * 24 * time.Hour)
+	}
+}
+
