@@ -924,6 +924,7 @@ func curationMotivator() {
 	for {
 		lastRewardDate := models.GetLastRewardDate(database)
 		allResponses := models.GetNumResponsesForMotivation(lastRewardDate, database)
+		var needResponsesToBeRewarded int
 		
 		golos := golosClient.NewApi(config.Rpc, config.Chain)
 		defer golos.Rpc.Close()
@@ -931,24 +932,24 @@ func curationMotivator() {
 		if err != nil {
 			log.Println(err)
 		} else {
-			gold := strconv.Atoi(strings.Replace(strings.Replace(accounts[0].SbdBalance, ".", "", 1), " GBG", "", 1))
+			gold, _ := strconv.Atoi(strings.Replace(strings.Replace(accounts[0].SbdBalance, ".", "", 1), " GBG", "", 1))
 			if gold < allResponses {
-				needResponsesToBeRewarded := allResponses / gold
+				needResponsesToBeRewarded = allResponses / gold
 			} else {
-				needResponsesToBeRewarded := 1
+				needResponsesToBeRewarded = 1
 			}
 			curatorIDs, err := models.GetUserIDsForMotivation(lastRewardDate, database)
 			if err != nil {
 				log.Println(err)
 			} else {
-				for _, userID := range curatorsIDs {
-					credential := models.GetCredentialByUserID(userID, database)
-					if !credential.Active {
+				for _, userID := range curatorIDs {
+					credential, err := models.GetCredentialByUserID(userID, database)
+					if !credential.Active || err != nil {
 						continue
 					}
-					curatorResponses := models.GetNumResponsesForMotivationForUserID(userID, database)
+					curatorResponses := models.GetNumResponsesForMotivationForUserID(userID, lastRewardDate, database)
 					goldForCurator := curatorResponses / needResponsesToBeRewarded
-					amount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
+					ammount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
 					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
 					
 				}
