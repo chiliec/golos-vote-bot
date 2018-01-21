@@ -905,16 +905,16 @@ func excuseUs(vote models.Vote) {
 func suportedPostsReporter() {
 	time.Sleep(models.WannaSleepOneDay(12, 0)) // Спать до 12:00 следующего дня
 	for {
-		supportedPosts, err:= models.GetTrulyCompletedVotesSince(models.GetLastReportDate(database), database)
-		if err != nil {
-			log.Println(err)
-		} else {
+		//supportedPosts, err:= models.GetTrulyCompletedVotesSince(models.GetLastReportDate(database), database)
+		//if err != nil {
+		//	log.Println(err)
+		//} else {
 			//Я понятия не имею, как постить пост
 			//err := golos.Post(config.Account, title, body, permlink, "", post_image string, config.ReportTags, v *PC_Vote, o *PC_Options)
 			//if err != nil {
 			//	log.Println(err)
 			//}
-		}
+		//}
 		time.Sleep(24 * time.Hour)
 	}
 }
