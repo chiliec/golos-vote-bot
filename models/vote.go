@@ -42,7 +42,7 @@ func (vote Vote) Save(db *sql.DB) (int64, error) {
 		"rejected," +
 		"addled," +
 		"date) " +
-		"values(?, ?, ?, ?, ?, ?, ?)")
+		"values(?, ?, ?, ?, ?, ?, ?, ?)")
 	if err != nil {
 		return 0, err
 	}
