@@ -58,14 +58,11 @@ func GetNumResponsesVoteID(voteID int64, db *sql.DB) (int, int) {
 	return pos, neg
 }
 
-func GetNumResponsesForMotivation(date time.Time, db *sql.DB) (num int, err error) {
-	row, err := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ?", date)
-	if err != nil {
-		return num, err
-	}
+func GetNumResponsesForMotivation(date time.Time, db *sql.DB) (num int) {
+	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ?", date)
 	defer rows.Close()
 	row.Scan(&num)
-	return num, nil
+	return num
 }
 
 func GetUserIDsForMotivation(date time.Time, db *sql.DB) (userIDs []int, err error) {
@@ -82,12 +79,9 @@ func GetUserIDsForMotivation(date time.Time, db *sql.DB) (userIDs []int, err err
 	return userIDs, nil
 }
 
-func GetNumResponsesForMotivationForUserID(userID int, date time.Time, db *sql.DB) (num int, err error) {
-	row, err := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ? AND user_id = ?", date, userID)
-	if err != nil {
-		return num, err
-	}
-	defer rows.Close()
+func GetNumResponsesForMotivationForUserID(userID int, date time.Time, db *sql.DB) (num int) {
+	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ? AND user_id = ?", date, userID)
+	defer row.Close()
 	row.Scan(&num)
-	return num, nil
+	return num
 }
