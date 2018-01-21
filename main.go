@@ -882,7 +882,7 @@ func freshnessPolice() {
 func excuseUs(vote models.Vote) {
 	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
 	if positives >= negatives {
-		text := fmt.Sprintf("Прости, %d, твой пост (%d/%d) так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
+		text := fmt.Sprintf("Прости, %s, твой пост (%s/%s) так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
 				    "получше и кураторы обязательно это оценят", vote.Author, vote.Author, vote.Permalink)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
 		_, err := bot.Send(msg)
