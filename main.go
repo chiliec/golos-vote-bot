@@ -948,7 +948,7 @@ func curationMotivator() {
 					}
 					curatorResponses := models.GetNumResponsesForMotivationForUserID(userID, database)
 					goldForCurator := curatorResponses / needResponsesToBeRewarded
-					amount := fmt.Sprintf("%d.%d GBG", goldForCurator/1000, goldForCurator%1000)
+					amount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
 					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
 					
 				}
