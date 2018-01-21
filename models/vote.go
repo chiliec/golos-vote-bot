@@ -77,7 +77,7 @@ func GetOpenedVotesCount(db *sql.DB) (count int) {
 }
 
 func GetLastVotesForUserID(userID int, num int, db *sql.DB) (votes []Vote, err error) {
-	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, addled, date "
+	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, addled, date " +
 			      "FROM votes WHERE user_id = ? ORDER BY ID DESC LIMIT ?", userID, num)
 	if err != nil {
 		return votes, err
@@ -172,7 +172,7 @@ func ComputeIntervalForUser(userID int, n int, baseInterval int,db *sql.DB) (tim
 }
 
 func GetTrulyCompletedVotesSince(date time.Time, db *sql.DB) (votes []Vote, err error) {
-	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, addled, date "
+	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, addled, date " +
 			      "FROM votes WHERE date > ? AND completed = 1 AND rejected = 0 AND addled = 0", date)
 	if err != nil {
 		return votes, err
