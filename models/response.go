@@ -34,12 +34,6 @@ func (response Response) Exists(db *sql.DB) bool {
 	return id != nil
 }
 
-func GetLastResponse(db *sql.DB) (response Response) {
-	row := db.QueryRow("SELECT user_id, vote_id, result, date FROM responses ORDER BY ID DESC LIMIT 1")
-	row.Scan(&response.UserID, &response.VoteID, &response.Result, &response.Date)
-	return response
-}
-
 func GetAllResponsesForVoteID(voteID int64, db *sql.DB) (responses []Response, err error) {
 	rows, err := db.Query("SELECT user_id, vote_id, result, date FROM responses WHERE vote_id = ?", voteID)
 	if err != nil {
@@ -62,4 +56,32 @@ func GetNumResponsesVoteID(voteID int64, db *sql.DB) (int, int) {
 	row = db.QueryRow("SELECT COUNT(*) FROM responses WHERE vote_id = ? AND result = 0", voteID)
 	row.Scan(&neg)
 	return pos, neg
+}
+
+func GetNumResponsesForMotivation(date time.Time, db *sql.DB) (num int) {
+	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ?", date)
+	defer rows.Close()
+	row.Scan(&num)
+	return num
+}
+
+func GetUserIDsForMotivation(date time.Time, db *sql.DB) (userIDs []int, err error) {
+	rows, err := db.Query("SELECT distinct user_id FROM responses WHERE date > ?", date)
+	if err != nil {
+		return userIDs, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var userID int
+		rows.Scan(&userID)
+		userIDs = append(userIDs, userID)
+	}
+	return userIDs, nil
+}
+
+func GetNumResponsesForMotivationForUserID(userID int, date time.Time, db *sql.DB) (num int) {
+	row := db.QueryRow("SELECT COUNT(*) FROM responses WHERE date > ? AND user_id = ?", date, userID)
+	defer row.Close()
+	row.Scan(&num)
+	return num
 }
