@@ -11,7 +11,7 @@ func GetLastReportDate(db *sql.DB) (lastReportDate time.Time) {
 	return lastReportDate
 }
 
-func NewReportPosted(db *sql.DB) (int) {
+func NewReportPosted(db *sql.DB) (int64, error) {
 	result, err := db.Exec("INSERT INTO events (type) VALUES ('POST')")
 	return result.LastInsertId()
 }
