@@ -86,6 +86,8 @@ func main() {
 	go checkAuthority()
 	go queueProcessor()
 	go freshnessPolice()
+	go suportedPostsReporter()
+	go curationMotivator()
 
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
@@ -903,12 +905,12 @@ func excuseUs(vote models.Vote) {
 func suportedPostsReporter() {
 	time.Sleep(models.WannaSleepOneDay(12, 0)) // Спать до 12:00 следующего дня
 	for {
-		supportedPosts, err:= models.GetTrulyCompletedVotesSince(GetLastReportDate(database), database)
+		supportedPosts, err:= models.GetTrulyCompletedVotesSince(models.GetLastReportDate(database), database)
 		if err != nil {
 			log.Println(err)
 		} else {
 			//Я понятия не имею, как постить пост
-			//err := golos.Post(author_name, title, body, permlink, ptag, post_image string, tags []string, v *PC_Vote, o *PC_Options)
+			//err := golos.Post(config.Account, title, body, permlink, "", post_image string, config.ReportTags, v *PC_Vote, o *PC_Options)
 			//if err != nil {
 			//	log.Println(err)
 			//}
@@ -920,9 +922,38 @@ func suportedPostsReporter() {
 func curationMotivator() {
 	time.Sleep(models.WnnaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья 
 	for {
+		lastRewardDate := models.GetLastRewardDate(database)
+		allResponses := models.GetNumResponsesForMotivation(lastRewardDate, database)
 		
-		//Раздать награды кураторам
-		
+		golos := golosClient.NewApi(config.Rpc, config.Chain)
+		defer golos.Rpc.Close()
+		accounts, err := golos.Rpc.Database.GetAccounts([]string{config.Account})
+		if err != nil {
+			log.Println(err)
+		} else {
+			gold := strconv.Atoi(strings.Replace(strings.Replace(accounts[0].SbdBalance, ".", "", 1), " GBG", "", 1))
+			if gold < allResponses {
+				needResponsesToBeRewarded := allResponses / gold
+			} else {
+				needResponsesToBeRewarded := 1
+			}
+			curatorIDs, err := models.GetUserIDsForMotivation(lastRewardDate, database)
+			if err != nil {
+				log.Println(err)
+			} else {
+				for _, userID := range curatorsIDs {
+					credential := models.GetCredentialByUserID(userID, database)
+					if !credential.Active {
+						continue
+					}
+					curatorResponses := models.GetNumResponsesForMotivationForUserID(userID, database)
+					goldForCurator := curatorResponses / needResponsesToBeRewarded
+					amount := fmt.Sprintf("%d.%d GBG", goldForCurator/1000, goldForCurator%1000)
+					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
+					
+				}
+			}
+		}
 		time.Sleep(7 * 24 * time.Hour)
 	}
 }
