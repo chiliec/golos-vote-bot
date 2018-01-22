@@ -110,7 +110,7 @@ func createTables(db *sql.DB) error {
 		ALTER TABLE credentials ADD chat_id BIGINT NOT NULL DEFAULT 0;
 		ALTER TABLE referrals ADD referral TEXT DEFAULT '';
 		ALTER TABLE votes ADD rejected BOOLEAN NOT NULL CHECK (rejected IN (0,1)) DEFAULT 0;
-		ALTER TABLE votes ADD addled BOOLEAN NOT NULL CHECK (rejected IN (0,1)) DEFAULT 0;
+		ALTER TABLE votes ADD addled BOOLEAN NOT NULL CHECK (addled IN (0,1)) DEFAULT 0;
 		CREATE TABLE events(
 			id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
 			type TEXT NOT NULL,
