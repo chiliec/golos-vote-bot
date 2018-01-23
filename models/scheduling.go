@@ -25,6 +25,9 @@ func WnnaSleepTill(weekday time.Weekday, hour, min int) (sleepTime time.Duration
 func WannaSleepOneDay(hour, min int) (sleepTime time.Duration) {
         now := time.Now()
         nowYear, nowMonth, nowDay := now.Date()
-        nextDate := time.Date(nowYear, nowMonth, nowDay + 1, hour, min, 0, 0, now.Location())
-        return nextDate.Sub(time.Now())
+	if time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).Sub(time.Now()) < 0 {
+		return time.Date(nowYear, nowMonth, nowDay + 1, hour, min, 0, 0, now.Location()).Sub(time.Now())
+	} else {
+		return time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).Sub(time.Now())
+	}
 }

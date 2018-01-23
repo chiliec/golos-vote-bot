@@ -844,6 +844,7 @@ func queueProcessor() {
 			go vote(mostLikedPost)
 		} else {
 			mostLikedPost.Completed = true
+			mostLikedPost.Addled = true
 			mostLikedPost.Save(database)
 			go excuseUs(mostLikedPost)
 			continue
@@ -913,7 +914,10 @@ func suportedPostsReporter() {
 			//err := golos.Post(config.Account, title, body, permlink, "", post_image string, config.ReportTags, v *PC_Vote, o *PC_Options)
 			//if err != nil {
 			//	log.Println(err)
+			//} else {
+			//	models.NewReportPosted(database)
 			//}
+			
 		//}
 		time.Sleep(24 * time.Hour)
 	}
