@@ -29,3 +29,40 @@ func TestDbResponses(t *testing.T) {
 		t.Errorf("\n%#v\n%#v\nНе равны!", response, responsesFromDB[0])
 	}
 }
+
+func TestDbResponsesForMotivation(t *testing.T) {
+	database, err := db.InitDB("")
+	if err != nil {
+		t.Failed()
+	}
+	now := time.Now()
+	time.Sleep(time.Second)
+	response := Response{
+		UserID: 1,
+		VoteID: 1,
+		Result: true,
+		Date:   time.Now(),
+	}
+	response.Save(database)
+	response = Response{
+		UserID: 1,
+		VoteID: 2,
+		Result: true,
+		Date:   time.Now(),
+	}
+	response.Save(database)
+	response = Response{
+		UserID: 2,
+		VoteID: 2,
+		Result: true,
+		Date:   time.Now(),
+	}
+	userIDs, err := GetUserIDsForMotivation(now, database)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(userIDs) > 2 {
+		t.Errorf("не работает GetUserIDsForMotivation()")
+	}
+
+}
