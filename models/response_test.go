@@ -59,9 +59,9 @@ func TestDbResponsesForMotivation(t *testing.T) {
 	}
 	userIDs, err := GetUserIDsForMotivation(now, database)
 	if err != nil {
-		t.Errorf(err)
+		t.Error(err)
 	}
-	if len(s) > 2 {
+	if len(userIDs) > 2 {
 		t.Errorf("не работает GetUserIDsForMotivation()")
 	}
 
