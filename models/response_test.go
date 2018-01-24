@@ -30,7 +30,7 @@ func TestDbResponses(t *testing.T) {
 	}
 }
 
-func TestDbResponses(t *testing.T) {
+func TestDbResponsesForMotivation(t *testing.T) {
 	database, err := db.InitDB("")
 	if err != nil {
 		t.Failed()
@@ -58,6 +58,9 @@ func TestDbResponses(t *testing.T) {
 		Date:   time.Now(),
 	}
 	userIDs, err := GetUserIDsForMotivation(now, database)
+	if err != nil {
+		t.Errorf(err)
+	}
 	if len(s) > 2 {
 		t.Errorf("не работает GetUserIDsForMotivation()")
 	}
