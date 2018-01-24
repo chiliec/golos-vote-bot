@@ -35,8 +35,8 @@ func TestDbResponsesForMotivation(t *testing.T) {
 	if err != nil {
 		t.Failed()
 	}
-	now = time.Now()
-	time.sleep(time.Second)
+	now := time.Now()
+	time.Sleep(time.Second)
 	response := Response{
 		UserID: 1,
 		VoteID: 1,
