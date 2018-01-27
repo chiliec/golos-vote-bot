@@ -6,7 +6,7 @@ import (
 
 func WnnaSleepTill(weekday time.Weekday, hour, min int) (sleepTime time.Duration) {
 	now := time.Now()
-        nowYear, nowMonth, nowDay := now.Date()
+	nowYear, nowMonth, nowDay := now.Date()
 	nowWeekday := now.Weekday()
 	var diff int
 	if nowWeekday == weekday {
@@ -15,18 +15,18 @@ func WnnaSleepTill(weekday time.Weekday, hour, min int) (sleepTime time.Duration
 		} else {
 			diff = 7
 		}
-	} else { 
+	} else {
 		diff = (7 - int(nowWeekday) + int(weekday)) % 7
 	}
-        nextDate := time.Date(nowYear, nowMonth, nowDay + diff, hour, min, 0, 0, now.Location())
-        return nextDate.Sub(time.Now())
+	nextDate := time.Date(nowYear, nowMonth, nowDay+diff, hour, min, 0, 0, now.Location())
+	return nextDate.Sub(time.Now())
 }
 
 func WannaSleepOneDay(hour, min int) (sleepTime time.Duration) {
-        now := time.Now()
-        nowYear, nowMonth, nowDay := now.Date()
+	now := time.Now()
+	nowYear, nowMonth, nowDay := now.Date()
 	if time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).Sub(time.Now()) < 0 {
-		return time.Date(nowYear, nowMonth, nowDay + 1, hour, min, 0, 0, now.Location()).Sub(time.Now())
+		return time.Date(nowYear, nowMonth, nowDay+1, hour, min, 0, 0, now.Location()).Sub(time.Now())
 	} else {
 		return time.Date(nowYear, nowMonth, nowDay, hour, min, 0, 0, now.Location()).Sub(time.Now())
 	}

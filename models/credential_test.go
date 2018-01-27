@@ -13,7 +13,7 @@ func TestDbCredentials(t *testing.T) {
 	}
 	credential := Credential{
 		UserID:   1,
-		ChatID:	  1,
+		ChatID:   1,
 		UserName: "chiliec",
 		Power:    100,
 		Active:   true,
@@ -39,7 +39,7 @@ func TestCredential_UpdatePower(t *testing.T) {
 	}
 	credential := Credential{
 		UserID:   1,
-		ChatID:	  1,
+		ChatID:   1,
 		UserName: "chiliec",
 		Power:    100,
 		Active:   true,
@@ -77,7 +77,7 @@ func TestIsActiveCredential(t *testing.T) {
 	}
 	credential := Credential{
 		UserID:   1,
-		ChatID:	  1,
+		ChatID:   1,
 		UserName: "chiliec",
 		Power:    100,
 		Active:   true,

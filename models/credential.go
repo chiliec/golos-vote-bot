@@ -7,11 +7,11 @@ import (
 
 type Credential struct {
 	UserID   int
-	ChatID	 int64
+	ChatID   int64
 	UserName string
 	Power    int
 	Active   bool
-	Curates	 bool
+	Curates  bool
 }
 
 func (credential Credential) Save(db *sql.DB) (bool, error) {
@@ -110,8 +110,8 @@ func GetAllActiveCurstorsChatID(db *sql.DB) ([]int64, error) {
 		var result int64
 		err = rows.Scan(&result)
 		if err != nil {
-    			log.Println(err.Error())
-   			continue
+			log.Println(err.Error())
+			continue
 		}
 		chatIDs = append(chatIDs, result)
 	}
@@ -130,7 +130,7 @@ func GetAllActiveCurstorsID(db *sql.DB) ([]int, error) {
 		err := rows.Scan(&result)
 		if err != nil {
 			log.Println(err.Error())
-   			continue
+			continue
 		}
 		IDs = append(IDs, result)
 	}

@@ -148,10 +148,10 @@ func processMessage(update tgbotapi.Update) error {
 						if err == nil {
 							referrer, err := models.GetCredentialByUserName(string(decodedString), database)
 							if err == nil && referrer.Active == true {
-								referral := models.Referral{UserID: userID, 
-											    Referrer: string(decodedString), 
-											    UserName: "", 
-											    Completed: false}
+								referral := models.Referral{UserID: userID,
+									Referrer:  string(decodedString),
+									UserName:  "",
+									Completed: false}
 								_, err = referral.Save(database)
 								if err != nil {
 									log.Println("не сохранили реферала: " + err.Error())
@@ -288,10 +288,10 @@ func processMessage(update tgbotapi.Update) error {
 				msg.Text = "Мне не интересно голосовать за пост с отключенными выплатами"
 				break
 			}
-			
+
 			if models.GetOpenedVotesCount(database) >= config.MaximumOpenedVotes {
 				msg.Text = "Слишком много уже открытых голосований. " +
-					   "Подожди, пока другой голос получит голоса или полиция свежести избавится от протухших постов."
+					"Подожди, пока другой голос получит голоса или полиция свежести избавится от протухших постов."
 				break
 			}
 
@@ -314,7 +314,7 @@ func processMessage(update tgbotapi.Update) error {
 				Percent:   percent,
 				Completed: false,
 				Rejected:  false,
-				Addled:	   false,
+				Addled:    false,
 				Date:      time.Now(),
 			}
 
@@ -333,14 +333,14 @@ func processMessage(update tgbotapi.Update) error {
 			if checkUniqueness(post.Body, voteModel) {
 				go newPost(voteID, author, permalink, chatID)
 			}
-			
+
 			return nil
 		case state.Action == buttonAddKey:
 			login := strings.ToLower(update.Message.Text)
 			login = strings.Trim(login, "@")
 			credential := models.Credential{
 				UserID:   userID,
-				ChatID:	  chatID,
+				ChatID:   chatID,
 				UserName: login,
 				Power:    100,
 				Active:   true,
@@ -454,15 +454,15 @@ func processMessage(update tgbotapi.Update) error {
 			firstButton := tgbotapi.NewKeyboardButton(buttonAddKey)
 			secondButton := tgbotapi.NewKeyboardButton(buttonRemoveKey)
 			firstButtonRow := []tgbotapi.KeyboardButton{firstButton, secondButton}
-			
+
 			thirdButton := tgbotapi.NewKeyboardButton(buttonSetPowerLimit)
 			fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
 			secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
-			
+
 			fifthButton := tgbotapi.NewKeyboardButton(buttonWannaCurate)
 			sixthButton := tgbotapi.NewKeyboardButton(buttonStopCurate)
 			thirdButtonRow := []tgbotapi.KeyboardButton{fifthButton, sixthButton}
-			
+
 			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow, thirdButtonRow)
 			msg.ReplyMarkup = keyboard
 		}
@@ -717,14 +717,14 @@ func vote(voteModel models.Vote) {
 	}
 	wg.Wait()
 	successVotesCount := len(credentials) - len(errors)
-	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d", 
-			    successVotesCount, 
-			    helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
+	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d",
+		successVotesCount,
+		helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
 	if err != nil {
 		log.Println(err.Error())
-		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s\n%s", 
-				   config.Developer,
-				   helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
+		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s\n%s",
+			config.Developer,
+			helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
 	}
 	log.Println(text)
 	msg := tgbotapi.NewMessage(config.GroupID, text)
@@ -815,11 +815,11 @@ func newPost(voteID int64, author string, permalink string, chatID int64) {
 		markup := helpers.GetVoteMarkup(voteID)
 		msg.ReplyMarkup = markup
 		msg.DisableWebPagePreview = false
-		
+
 		_, err := bot.Send(msg)
 		if err != nil {
 			log.Println(fmt.Sprintf("Не смогли отправить сообщение куратору %n", curatorChatID))
-		}		
+		}
 	}
 }
 
@@ -836,7 +836,7 @@ func queueProcessor() {
 			var positives, negatives int
 			positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
 			if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
-				maxDiff = positives-negatives
+				maxDiff = positives - negatives
 				mostLikedPost = vote
 			}
 		}
@@ -883,8 +883,8 @@ func freshnessPolice() {
 func excuseUs(vote models.Vote) {
 	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
 	if positives >= negatives {
-		text := fmt.Sprintf("Прости, %s, твой пост (%s/%s) так и не дождался своих голосов. В следующий раз напиши что-нибудь " +
-				    "получше и кураторы обязательно это оценят", vote.Author, vote.Author, vote.Permalink)
+		text := fmt.Sprintf("Прости, %s, твой пост (%s/%s) так и не дождался своих голосов. В следующий раз напиши что-нибудь "+
+			"получше и кураторы обязательно это оценят", vote.Author, vote.Author, vote.Permalink)
 		msg := tgbotapi.NewMessage(config.GroupID, text)
 		_, err := bot.Send(msg)
 		if err != nil {
@@ -910,26 +910,26 @@ func suportedPostsReporter() {
 		//if err != nil {
 		//	log.Println(err)
 		//} else {
-			//Я понятия не имею, как постить пост
-			//err := golos.Post(config.Account, title, body, permlink, "", post_image string, config.ReportTags, v *PC_Vote, o *PC_Options)
-			//if err != nil {
-			//	log.Println(err)
-			//} else {
-			//	models.NewReportPosted(database)
-			//}
-			
+		//Я понятия не имею, как постить пост
+		//err := golos.Post(config.Account, title, body, permlink, "", post_image string, config.ReportTags, v *PC_Vote, o *PC_Options)
+		//if err != nil {
+		//	log.Println(err)
+		//} else {
+		//	models.NewReportPosted(database)
+		//}
+
 		//}
 		time.Sleep(24 * time.Hour)
 	}
 }
 
 func curationMotivator() {
-	time.Sleep(models.WnnaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья 
+	time.Sleep(models.WnnaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья
 	for {
 		lastRewardDate := models.GetLastRewardDate(database)
 		allResponses := models.GetNumResponsesForMotivation(lastRewardDate, database)
 		var needResponsesToBeRewarded int
-		
+
 		golos := golosClient.NewApi(config.Rpc, config.Chain)
 		defer golos.Rpc.Close()
 		accounts, err := golos.Rpc.Database.GetAccounts([]string{config.Account})
@@ -955,11 +955,10 @@ func curationMotivator() {
 					goldForCurator := curatorResponses / needResponsesToBeRewarded
 					ammount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
 					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
-					
+
 				}
 			}
 		}
 		time.Sleep(7 * 24 * time.Hour)
 	}
 }
-
