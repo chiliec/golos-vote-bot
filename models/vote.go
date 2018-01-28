@@ -117,7 +117,6 @@ func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
 	rows, err := db.Query("SELECT id, user_id, author, permalink, percent, completed, rejected, addled, date " +
 		"FROM votes WHERE completed = 0")
 	if err != nil {
-		votes[0].Completed = true
 		return votes, err
 	}
 	for rows.Next() {
