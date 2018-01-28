@@ -871,7 +871,7 @@ func freshnessPolice() {
 	var vote models.Vote
 	for {
 		vote = models.GetOldestOpenedVote(database)
-		if !checkFreshness(vote) {
+		if !checkFreshness(vote) && vote.UserID != 0 {
 			vote.Completed = true
 			vote.Addled = true
 			vote.Save(database)
