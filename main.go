@@ -828,7 +828,7 @@ func queueProcessor() {
 		votes, err := models.GetAllOpenedVotes(database)
 		maxDiff := 0
 		var mostLikedPost models.Vote
-		if err != nil {
+		if err != nil || len(votes) == 0 {
 			log.Println(err)
 			continue
 		} else {
