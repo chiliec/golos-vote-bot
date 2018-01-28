@@ -49,12 +49,12 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/js/bootstrap.min.js"
         integrity="sha384-alpBpkh1PFOepccYVYDB4do5UnbKysX5WZXm3XxPqe5iKTfUKjNkCk9SaVuEZflJ"
         crossorigin="anonymous"></script>
-<script src="https://cdn.steemjs.com/lib/latest/steem.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/golos-js@0.5.30/dist/golos.min.js"></script>
 <script>
-steem.config.set('websocket', 'wss://api.golos.cf');
+golos.config.set('websocket', 'wss://api.golos.cf');
 
-steem.config.set('address_prefix', 'GLS');
-steem.config.set('chain_id', '782a3039b478c839e4cb0c941ff4eaeb7df40bdd68bd441afd444b9da763de12');
+golos.config.set('address_prefix', 'GLS');
+golos.config.set('chain_id', '782a3039b478c839e4cb0c941ff4eaeb7df40bdd68bd441afd444b9da763de12');
 
 var button = document.getElementById("sendForm");
 button.addEventListener("click", function(event) {
@@ -66,7 +66,7 @@ button.addEventListener("click", function(event) {
         return;
     }
     button.disabled = true;
-    steem.api.getAccounts([creator], function(err, data) {
+    golos.api.getAccounts([creator], function(err, data) {
         if (err) {
             console.warn(err);
             button.disabled = false;
@@ -87,7 +87,7 @@ button.addEventListener("click", function(event) {
         }
         var memo = account.memo_key;
         pAuth.account_auths.push([recipient, pAuth.weight_threshold]);
-        steem.broadcast.accountUpdate(wif, creator, undefined, undefined, pAuth, memo, account.json_metadata, function(err, result) {
+        golos.broadcast.accountUpdate(wif, creator, undefined, undefined, pAuth, memo, account.json_metadata, function(err, result) {
             console.log(err, result);
             if (err) {
                 return document.getElementById('out').innerHTML = "<div class='alert alert-danger' role='alert'><h4>Ошибка!</h4>Подробности ошибки в консоли браузера</div>"
