@@ -831,23 +831,24 @@ func queueProcessor() {
 		if err != nil {
 			log.Println(err)
 			continue
-		}
-		for _, vote := range votes {
-			var positives, negatives int
-			positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
-			if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
-				maxDiff = positives - negatives
-				mostLikedPost = vote
-			}
-		}
-		if checkFreshness(mostLikedPost) {
-			go vote(mostLikedPost)
 		} else {
-			mostLikedPost.Completed = true
-			mostLikedPost.Addled = true
-			mostLikedPost.Save(database)
-			go excuseUs(mostLikedPost)
-			continue
+			for _, vote := range votes {
+				var positives, negatives int
+				positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
+				if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
+					maxDiff = positives - negatives
+					mostLikedPost = vote
+				}
+			}
+			if checkFreshness(mostLikedPost) {
+				go vote(mostLikedPost)
+			} else {
+				mostLikedPost.Completed = true
+				mostLikedPost.Addled = true
+				mostLikedPost.Save(database)
+				go excuseUs(mostLikedPost)
+				continue
+			}
 		}
 		time.Sleep(60 * time.Minute)
 	}
