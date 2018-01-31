@@ -843,6 +843,9 @@ func queueProcessor() {
 					mostLikedPost = vote
 				}
 			}
+			if mostLikedPost.UserID == 0 {
+				continue
+			}
 			if checkFreshness(mostLikedPost) {
 				go vote(mostLikedPost)
 			} else {
