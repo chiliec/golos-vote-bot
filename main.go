@@ -330,6 +330,8 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
+			msg.Text = "Пост выставлен на голосование."
+			
 			if checkUniqueness(post.Body, voteModel) {
 				go newPost(voteID, author, permalink, chatID)
 			}
