@@ -330,6 +330,8 @@ func processMessage(update tgbotapi.Update) error {
 
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
+			msg.Text = "Пост выставлен на голосование."
+			
 			if checkUniqueness(post.Body, voteModel) {
 				go newPost(voteID, author, permalink, chatID)
 			}
@@ -828,8 +830,11 @@ func queueProcessor() {
 		votes, err := models.GetAllOpenedVotes(database)
 		maxDiff := 0
 		var mostLikedPost models.Vote
-		if err != nil || len(votes) == 0 {
+		if err != nil {
 			log.Println(err)
+			continue
+		} 
+		if len(votes) == 0 {
 			continue
 		} else {
 			for _, vote := range votes {
@@ -839,6 +844,9 @@ func queueProcessor() {
 					maxDiff = positives - negatives
 					mostLikedPost = vote
 				}
+			}
+			if mostLikedPost.UserID == 0 {
+				continue
 			}
 			if checkFreshness(mostLikedPost) {
 				go vote(mostLikedPost)
