@@ -136,21 +136,6 @@ func GetAllOpenedVotes(db *sql.DB) (votes []Vote, err error) {
 	return votes, err
 }
 
-func GetOldestOpenedVote(db *sql.DB) (vote Vote) {
-	row := db.QueryRow("SELECT id, user_id, author, permalink, percent, completed, rejected, addled, date FROM votes " +
-		"WHERE completed = 0 ORDER BY date LIMIT 1")
-	row.Scan(&vote.VoteID,
-		&vote.UserID,
-		&vote.Author,
-		&vote.Permalink,
-		&vote.Percent,
-		&vote.Completed,
-		&vote.Rejected,
-		&vote.Addled,
-		&vote.Date)
-	return vote
-}
-
 //computes interval based on last n posts
 func ComputeIntervalForUser(userID int, n int, baseInterval int, db *sql.DB) (time.Duration, error) {
 	var good, all int

@@ -1,27 +1,17 @@
 package helpers
 
 import (
+	"database/sql"
 	"log"
 	"sync"
 
 	golosClient "github.com/asuleymanov/golos-go/client"
 
-	"database/sql"
 	configuration "github.com/GolosTools/golos-vote-bot/config"
 	"github.com/GolosTools/golos-vote-bot/models"
 )
 
-var config configuration.Config
-
-func init() {
-	c, err := GetConfig()
-	if err != nil {
-		log.Panic(err.Error())
-	}
-	config = c
-}
-
-func SendComment(author, permalink, text string) error {
+func SendComment(author, permalink, text string, config configuration.Config) error {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
 	vote := golosClient.PC_Vote{Weight: 100 * 100}
@@ -36,7 +26,7 @@ func SendComment(author, permalink, text string) error {
 	return err
 }
 
-func Vote(author, permalink string, database *sql.DB) (successVotesCount int) {
+func Vote(author, permalink string, database *sql.DB, config configuration.Config) (successVotesCount int) {
 	credentials, err := models.GetAllActiveCredentials(database)
 	if err != nil {
 		log.Println("Не смогли извлечь ключи из базы")

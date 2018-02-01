@@ -42,10 +42,11 @@ var (
 )
 
 func init() {
-	config, err := helpers.GetConfig()
+	configuration, err := helpers.GetConfig()
 	if err != nil {
 		log.Panic(err.Error())
 	}
+	config = configuration
 	golosClient.Key_List[config.Account] = golosClient.Keys{
 		PKey: config.PostingKey,
 		AKey: config.ActiveKey}
@@ -73,9 +74,9 @@ func init() {
 func main() {
 	defer database.Close()
 
+	go freshnessPolice()
 	//go checkAuthority()
 	//go queueProcessor()
-	//go freshnessPolice()
 	//go suportedPostsReporter()
 	//go curationMotivator()
 
@@ -655,7 +656,7 @@ func checkUniqueness(text string, voteModel models.Vote) bool {
 			imageNumber := random(1, 18)
 			report := fmt.Sprintf("[![Уникальность проверена через TEXT.RU](https://text.ru/image/get/%s/%d)](https://text.ru/antiplagiat/%s)",
 				uid.TextUid, imageNumber, uid.TextUid)
-			err = helpers.SendComment(voteModel.Author, voteModel.Permalink, report)
+			err = helpers.SendComment(voteModel.Author, voteModel.Permalink, report, config)
 			if err != nil {
 				log.Println(err.Error())
 			}
@@ -778,74 +779,61 @@ func queueProcessor() {
 			if mostLikedPost.UserID == 0 {
 				continue
 			}
-			if checkFreshness(mostLikedPost) {
-				successVotesCount := helpers.Vote(mostLikedPost.Author, mostLikedPost.Permalink, database)
-				text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d",
-					successVotesCount,
-					helpers.GetInstantViewLink(mostLikedPost.Author, mostLikedPost.Permalink))
-				msg := tgbotapi.NewMessage(config.GroupID, text)
-				_, err = bot.Send(msg)
-				if err != nil {
-					log.Println(err.Error())
-				}
-			} else {
-				mostLikedPost.Completed = true
-				mostLikedPost.Addled = true
-				mostLikedPost.Save(database)
-				go excuseUs(mostLikedPost)
-				continue
+			successVotesCount := helpers.Vote(mostLikedPost.Author, mostLikedPost.Permalink, database, config)
+			text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d",
+				successVotesCount,
+				helpers.GetInstantViewLink(mostLikedPost.Author, mostLikedPost.Permalink))
+			msg := tgbotapi.NewMessage(config.GroupID, text)
+			_, err = bot.Send(msg)
+			if err != nil {
+				log.Println(err.Error())
 			}
 		}
 		time.Sleep(60 * time.Minute)
 	}
 }
 
-func checkFreshness(vote models.Vote) bool {
+func freshnessPolice() {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
 	defer golos.Rpc.Close()
-	post, err := golos.Rpc.Database.GetContent(vote.Author, vote.Permalink)
+	votes, err := models.GetAllOpenedVotes(database)
+	log.Printf("Загружено %d постов для проверки", len(votes))
 	if err != nil {
-		return true
+		log.Panic(err.Error())
 	}
-	if post.Mode != "first_payout" {
-		return false
-	}
-	return true
-}
-
-func freshnessPolice() {
-	var vote models.Vote
-	for {
-		vote = models.GetOldestOpenedVote(database)
-		if !checkFreshness(vote) && vote.UserID != 0 {
+	for _, vote := range votes {
+		post, err := golos.Rpc.Database.GetContent(vote.Author, vote.Permalink)
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+		if post.Mode != "first_payout" {
 			vote.Completed = true
 			vote.Addled = true
 			vote.Save(database)
 			go excuseUs(vote)
 		}
-		time.Sleep(3 * time.Hour)
 	}
+	time.Sleep(1 * time.Hour)
+	freshnessPolice()
 }
 
 func excuseUs(vote models.Vote) {
 	positives, negatives := models.GetNumResponsesVoteID(vote.VoteID, database)
+	var msg tgbotapi.MessageConfig
 	if positives >= negatives {
 		text := fmt.Sprintf("Прости, %s, твой пост (%s/%s) так и не дождался своих голосов. В следующий раз напиши что-нибудь "+
 			"получше и кураторы обязательно это оценят", vote.Author, vote.Author, vote.Permalink)
-		msg := tgbotapi.NewMessage(config.GroupID, text)
-		_, err := bot.Send(msg)
-		if err != nil {
-			log.Println(err)
-		}
+		msg = tgbotapi.NewMessage(config.GroupID, text)
 	} else {
 		vote.Rejected = true
 		vote.Save(database)
 		text := fmt.Sprintf("Пoст %d/%d был отклонен кураторами", vote.Author, vote.Permalink)
-		msg := tgbotapi.NewMessage(config.GroupID, text)
-		_, err := bot.Send(msg)
-		if err != nil {
-			log.Println(err)
-		}
+		msg = tgbotapi.NewMessage(config.GroupID, text)
+	}
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Println(err)
 	}
 }
 
