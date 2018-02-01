@@ -450,6 +450,7 @@ func processMessage(update tgbotapi.Update) error {
 			if update.Message.Chat.Type != "private" {
 				return nil
 			}
+			msg.ReplyToMessageID = update.Message.MessageID
 			msg.Text = "Не понимаю"
 		}
 		if msg.ReplyMarkup == nil && update.Message.Chat.Type == "private" {
