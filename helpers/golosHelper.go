@@ -26,18 +26,17 @@ func SendComment(author, permalink, text string, config configuration.Config) er
 	return err
 }
 
-func Vote(author, permalink string, database *sql.DB, config configuration.Config) (successVotesCount int) {
+func Vote(vote models.Vote, database *sql.DB, config configuration.Config) (successVotesCount int, err error) {
 	credentials, err := models.GetAllActiveCredentials(database)
 	if err != nil {
-		log.Println("Не смогли извлечь ключи из базы")
-		return
+		return 0, err
 	}
 	for _, credential := range credentials {
 		if config.Account != credential.UserName {
 			golosClient.Key_List[credential.UserName] = golosClient.Keys{PKey: config.PostingKey}
 		}
 	}
-	log.Printf("Голосую за пост %s/%s, загружено %d аккаунтов", author, permalink, len(credentials))
+	log.Printf("Голосую за пост %s/%s, загружено %d аккаунтов", vote.Author, vote.Permalink, len(credentials))
 	var errors []error
 	var wg sync.WaitGroup
 	wg.Add(len(credentials))
@@ -47,7 +46,7 @@ func Vote(author, permalink string, database *sql.DB, config configuration.Confi
 			weight := credential.Power * 100
 			golos := golosClient.NewApi(config.Rpc, config.Chain)
 			defer golos.Rpc.Close()
-			err := golos.Vote(credential.UserName, author, permalink, weight)
+			err := golos.Vote(credential.UserName, vote.Author, vote.Permalink, weight)
 			if err != nil {
 				log.Println("Ошибка при голосовании: " + err.Error())
 				errors = append(errors, err)
@@ -56,5 +55,9 @@ func Vote(author, permalink string, database *sql.DB, config configuration.Confi
 	}
 	wg.Wait()
 	successVotesCount = len(credentials) - len(errors)
-	return successVotesCount
+	_, err = vote.Save(database)
+	if err != nil {
+		return successVotesCount, err
+	}
+	return successVotesCount, nil
 }

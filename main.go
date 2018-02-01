@@ -75,8 +75,8 @@ func main() {
 	defer database.Close()
 
 	go freshnessPolice()
-	//go checkAuthority()
-	//go queueProcessor()
+	go checkAuthority()
+	go queueProcessor()
 	//go suportedPostsReporter()
 	//go curationMotivator()
 
@@ -244,7 +244,7 @@ func processMessage(update tgbotapi.Update) error {
 
 			lastVote := models.GetLastVoteForUserID(userID, database)
 			userInterval, _ := models.ComputeIntervalForUser(userID, 10, config.PostingInterval, database)
-			if time.Since(lastVote.Date) < userInterval {
+			if time.Since(lastVote.Date) < userInterval && !config.DebugMode {
 				msg.Text = "Прошло слишком мало времени после твоего последнего поста. Наберись терпения!"
 				break
 			}
@@ -715,12 +715,14 @@ func sendReferralFee(referrer string, referral string) {
 func checkAuthority() {
 	for {
 		credentials, err := models.GetAllActiveCredentials(database)
+		log.Printf("Загружено %d аккаунтов для проверки", len(credentials))
 		if err != nil {
 			log.Println(err.Error())
 		}
 		golos := golosClient.NewApi(config.Rpc, config.Chain)
 		for _, credential := range credentials {
 			if !golos.Verify_Delegate_Posting_Key_Sign(credential.UserName, config.Account) {
+				log.Printf("Пользователь %s отключён", credential.UserName)
 				credential.Active = false
 				_, err = credential.Save(database)
 				if err != nil {
@@ -729,7 +731,7 @@ func checkAuthority() {
 			}
 		}
 		golos.Rpc.Close()
-		time.Sleep(time.Hour)
+		time.Sleep(1 * time.Hour)
 	}
 }
 
@@ -758,44 +760,50 @@ func newPost(voteID int64, author string, permalink string, chatID int64) {
 
 func queueProcessor() {
 	for {
+		// TODO: вынести минуты в настройки
+		time.Sleep(36 * time.Minute)
+		log.Println("Начинаю голосование за лучший пост")
 		votes, err := models.GetAllOpenedVotes(database)
-		maxDiff := 0
-		var mostLikedPost models.Vote
 		if err != nil {
-			log.Println(err)
+			log.Println(err.Error())
 			continue
 		}
 		if len(votes) == 0 {
+			log.Println("Нет открытых голосований")
 			continue
-		} else {
-			for _, vote := range votes {
-				var positives, negatives int
-				positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
-				if maxDiff < (positives-negatives) && (positives+negatives) >= config.RequiredVotes {
-					maxDiff = positives - negatives
-					mostLikedPost = vote
-				}
-			}
-			if mostLikedPost.UserID == 0 {
-				continue
-			}
-			successVotesCount := helpers.Vote(mostLikedPost.Author, mostLikedPost.Permalink, database, config)
-			text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d",
-				successVotesCount,
-				helpers.GetInstantViewLink(mostLikedPost.Author, mostLikedPost.Permalink))
-			msg := tgbotapi.NewMessage(config.GroupID, text)
-			_, err = bot.Send(msg)
-			if err != nil {
-				log.Println(err.Error())
+		}
+		maxDiff := 0
+		mostLikedPost := votes[0]
+		for _, vote := range votes {
+			var positives, negatives int
+			positives, negatives = models.GetNumResponsesVoteID(vote.VoteID, database)
+			diff := positives - negatives
+			if diff > maxDiff {
+				maxDiff = diff
+				mostLikedPost = vote
 			}
 		}
-		time.Sleep(60 * time.Minute)
+		log.Printf("Лучший пост определен: %s/%s", mostLikedPost.Author, mostLikedPost.Permalink)
+		successVotesCount, err := helpers.Vote(mostLikedPost, database, config)
+		text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%s",
+			successVotesCount,
+			helpers.GetInstantViewLink(mostLikedPost.Author, mostLikedPost.Permalink))
+		if err != nil {
+			log.Println(err.Error())
+			text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s\n%s",
+				config.Developer,
+				helpers.GetInstantViewLink(mostLikedPost.Author, mostLikedPost.Permalink))
+		}
+		msg := tgbotapi.NewMessage(config.GroupID, text)
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Println(err.Error())
+		}
 	}
 }
 
 func freshnessPolice() {
 	golos := golosClient.NewApi(config.Rpc, config.Chain)
-	defer golos.Rpc.Close()
 	votes, err := models.GetAllOpenedVotes(database)
 	log.Printf("Загружено %d постов для проверки", len(votes))
 	if err != nil {
@@ -814,6 +822,7 @@ func freshnessPolice() {
 			go excuseUs(vote)
 		}
 	}
+	golos.Rpc.Close()
 	time.Sleep(1 * time.Hour)
 	freshnessPolice()
 }
