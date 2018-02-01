@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-func WnnaSleepTill(weekday time.Weekday, hour, min int) (sleepTime time.Duration) {
+func WannaSleepTill(weekday time.Weekday, hour, min int) (sleepTime time.Duration) {
 	now := time.Now()
 	nowYear, nowMonth, nowDay := now.Date()
 	nowWeekday := now.Weekday()

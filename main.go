@@ -41,7 +41,7 @@ var (
 	bot      *tgbotapi.BotAPI
 )
 
-func init() {
+func main() {
 	configuration, err := helpers.GetConfig()
 	if err != nil {
 		log.Panic(err.Error())
@@ -50,7 +50,7 @@ func init() {
 	golosClient.Key_List[config.Account] = golosClient.Keys{
 		PKey: config.PostingKey,
 		AKey: config.ActiveKey}
-	db, err := db.InitDB(config.DatabasePath)
+	database, err = db.InitDB(config.DatabasePath)
 	if err != nil {
 		if err.Error() == "unable to open database file" {
 			path, err := filepath.Abs(config.DatabasePath)
@@ -61,7 +61,7 @@ func init() {
 		}
 		log.Panic(err)
 	}
-	database = db
+	defer database.Close()
 
 	bot, err = tgbotapi.NewBotAPI(config.TelegramToken)
 	if err != nil {
@@ -69,15 +69,11 @@ func init() {
 	}
 	bot.Debug = config.DebugMode
 	log.Printf("Authorized on account %s", bot.Self.UserName)
-}
-
-func main() {
-	defer database.Close()
 
 	go freshnessPolice()
 	go checkAuthority()
 	go queueProcessor()
-	//go suportedPostsReporter()
+	//go supportedPostsReporter()
 	//go curationMotivator()
 
 	u := tgbotapi.NewUpdate(0)
@@ -846,7 +842,7 @@ func excuseUs(vote models.Vote) {
 	}
 }
 
-func suportedPostsReporter() {
+func supportedPostsReporter() {
 	time.Sleep(models.WannaSleepOneDay(12, 0)) // Спать до 12:00 следующего дня
 	for {
 		//supportedPosts, err:= models.GetTrulyCompletedVotesSince(models.GetLastReportDate(database), database)
@@ -867,7 +863,7 @@ func suportedPostsReporter() {
 }
 
 func curationMotivator() {
-	time.Sleep(models.WnnaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья
+	time.Sleep(models.WannaSleepTill(0, 20, 0)) // Спать до 20:00 ближайшего воскресенья
 	for {
 		lastRewardDate := models.GetLastRewardDate(database)
 		allResponses := models.GetNumResponsesForMotivation(lastRewardDate, database)
