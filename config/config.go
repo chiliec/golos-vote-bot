@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	DebugMode          bool     `json:"debug_mode"`
 	TelegramToken      string   `json:"telegram_token"`
 	TelegramBotName    string   `json:"telegram_bot_name"`
 	Account            string   `json:"account"`

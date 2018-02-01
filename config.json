@@ -1,4 +1,5 @@
 {
+  "debug_mode": false,
   "telegram_token": "write-your-telegram-token-here",
   "telegram_bot_name": "golosovalochka_bot",
   "account": "golosovalochka",

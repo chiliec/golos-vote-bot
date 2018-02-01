@@ -77,7 +77,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	bot.Debug = false
+	bot.Debug = config.DebugMode
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
@@ -331,7 +331,7 @@ func processMessage(update tgbotapi.Update) error {
 			log.Printf("Вкинули статью \"%s\" автора \"%s\" в чате %d", permalink, author, chatID)
 
 			msg.Text = "Пост выставлен на голосование."
-			
+
 			if checkUniqueness(post.Body, voteModel) {
 				go newPost(voteID, author, permalink, chatID)
 			}
@@ -833,7 +833,7 @@ func queueProcessor() {
 		if err != nil {
 			log.Println(err)
 			continue
-		} 
+		}
 		if len(votes) == 0 {
 			continue
 		} else {
