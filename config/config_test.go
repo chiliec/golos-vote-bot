@@ -20,7 +20,6 @@ func TestLoadConfiguration(t *testing.T) {
 		ActiveKey:          "5...",
 		TextRuToken:        "",
 		ReferralFee:        5.0,
-		RequiredVotes:      4,
 		InitialUserRating:  10,
 		MaximumOpenedVotes: 3,
 		PostingInterval:    480,
