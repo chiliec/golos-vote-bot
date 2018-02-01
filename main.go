@@ -10,12 +10,10 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	golosClient "github.com/asuleymanov/golos-go/client"
@@ -43,24 +41,15 @@ var (
 	bot      *tgbotapi.BotAPI
 )
 
-func main() {
-	err := configuration.LoadConfiguration("./config.json", &config)
+func init() {
+	config, err := helpers.GetConfig()
 	if err != nil {
-		log.Panic(err)
+		log.Panic(err.Error())
 	}
-	err = configuration.LoadConfiguration("./config.local.json", &config)
-	if err != nil && !os.IsNotExist(err) {
-		log.Panic(err)
-	}
-	if config.TelegramToken == "write-your-telegram-token-here" {
-		log.Panic("Токен для телеграма не введён")
-	}
-
 	golosClient.Key_List[config.Account] = golosClient.Keys{
 		PKey: config.PostingKey,
 		AKey: config.ActiveKey}
-
-	database, err = db.InitDB(config.DatabasePath)
+	db, err := db.InitDB(config.DatabasePath)
 	if err != nil {
 		if err.Error() == "unable to open database file" {
 			path, err := filepath.Abs(config.DatabasePath)
@@ -71,7 +60,7 @@ func main() {
 		}
 		log.Panic(err)
 	}
-	defer database.Close()
+	database = db
 
 	bot, err = tgbotapi.NewBotAPI(config.TelegramToken)
 	if err != nil {
@@ -79,16 +68,19 @@ func main() {
 	}
 	bot.Debug = config.DebugMode
 	log.Printf("Authorized on account %s", bot.Self.UserName)
+}
+
+func main() {
+	defer database.Close()
+
+	//go checkAuthority()
+	//go queueProcessor()
+	//go freshnessPolice()
+	//go suportedPostsReporter()
+	//go curationMotivator()
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
-
-	go checkAuthority()
-	go queueProcessor()
-	go freshnessPolice()
-	go suportedPostsReporter()
-	go curationMotivator()
-
 	updates, err := bot.GetUpdatesChan(u)
 	if err != nil {
 		log.Panic(err)
@@ -663,7 +655,7 @@ func checkUniqueness(text string, voteModel models.Vote) bool {
 			imageNumber := random(1, 18)
 			report := fmt.Sprintf("[![Уникальность проверена через TEXT.RU](https://text.ru/image/get/%s/%d)](https://text.ru/antiplagiat/%s)",
 				uid.TextUid, imageNumber, uid.TextUid)
-			err = sendComment(voteModel.Author, voteModel.Permalink, report)
+			err = helpers.SendComment(voteModel.Author, voteModel.Permalink, report)
 			if err != nil {
 				log.Println(err.Error())
 			}
@@ -673,69 +665,6 @@ func checkUniqueness(text string, voteModel models.Vote) bool {
 		break
 	}
 	return false
-}
-
-func sendComment(author string, permalink string, text string) error {
-	golos := golosClient.NewApi(config.Rpc, config.Chain)
-	defer golos.Rpc.Close()
-	vote := golosClient.PC_Vote{Weight: 100 * 100}
-	options := golosClient.PC_Options{Percent: 50}
-	err := golos.Comment(
-		config.Account,
-		author,
-		permalink,
-		text,
-		&vote,
-		&options)
-	return err
-}
-
-func vote(voteModel models.Vote) {
-	credentials, err := models.GetAllActiveCredentials(database)
-	if err != nil {
-		log.Println("Не смогли извлечь ключи из базы")
-		return
-	}
-	for _, credential := range credentials {
-		if config.Account != credential.UserName {
-			golosClient.Key_List[credential.UserName] = golosClient.Keys{PKey: config.PostingKey}
-		}
-	}
-	log.Printf("Голосую за пост %s/%s, загружено %d аккаунтов", voteModel.Author, voteModel.Permalink, len(credentials))
-	var errors []error
-	var wg sync.WaitGroup
-	wg.Add(len(credentials))
-	for _, credential := range credentials {
-		go func(credential models.Credential) {
-			defer wg.Done()
-			weight := credential.Power * 100
-			golos := golosClient.NewApi(config.Rpc, config.Chain)
-			defer golos.Rpc.Close()
-			err := golos.Vote(credential.UserName, voteModel.Author, voteModel.Permalink, weight)
-			if err != nil {
-				log.Println("Ошибка при голосовании: " + err.Error())
-				errors = append(errors, err)
-			}
-		}(credential)
-	}
-	wg.Wait()
-	successVotesCount := len(credentials) - len(errors)
-	text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d",
-		successVotesCount,
-		helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
-	if err != nil {
-		log.Println(err.Error())
-		text = fmt.Sprintf("В процессе голосования произошла ошибка, свяжитесь с разработчиком - %s\n%s",
-			config.Developer,
-			helpers.GetInstantViewLink(voteModel.Author, voteModel.Permalink))
-	}
-	log.Println(text)
-	msg := tgbotapi.NewMessage(config.GroupID, text)
-	_, err = bot.Send(msg)
-	if err != nil {
-		log.Println(err.Error())
-	}
-	return
 }
 
 func sendReferralFee(referrer string, referral string) {
@@ -850,7 +779,15 @@ func queueProcessor() {
 				continue
 			}
 			if checkFreshness(mostLikedPost) {
-				go vote(mostLikedPost)
+				successVotesCount := helpers.Vote(mostLikedPost.Author, mostLikedPost.Permalink, database)
+				text := fmt.Sprintf("Успешно проголосовала c %d аккаунтов за пост\n%d",
+					successVotesCount,
+					helpers.GetInstantViewLink(mostLikedPost.Author, mostLikedPost.Permalink))
+				msg := tgbotapi.NewMessage(config.GroupID, text)
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Println(err.Error())
+				}
 			} else {
 				mostLikedPost.Completed = true
 				mostLikedPost.Addled = true
@@ -910,7 +847,6 @@ func excuseUs(vote models.Vote) {
 			log.Println(err)
 		}
 	}
-	return
 }
 
 func suportedPostsReporter() {
@@ -965,7 +901,6 @@ func curationMotivator() {
 					goldForCurator := curatorResponses / needResponsesToBeRewarded
 					ammount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
 					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
-
 				}
 			}
 		}
