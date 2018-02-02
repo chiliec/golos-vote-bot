@@ -12,6 +12,7 @@ func TestLoadConfiguration(t *testing.T) {
 		t.Error(err)
 	}
 	defaultConfig := Config{
+		DebugMode:          false,
 		TelegramToken:      "write-your-telegram-token-here",
 		TelegramBotName:    "golosovalochka_bot",
 		Account:            "golosovalochka",
@@ -19,7 +20,6 @@ func TestLoadConfiguration(t *testing.T) {
 		ActiveKey:          "5...",
 		TextRuToken:        "",
 		ReferralFee:        5.0,
-		RequiredVotes:      4,
 		InitialUserRating:  10,
 		MaximumOpenedVotes: 3,
 		PostingInterval:    480,

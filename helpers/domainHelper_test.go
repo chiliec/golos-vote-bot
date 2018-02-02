@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/GolosTools/golos-vote-bot/config"
+	configuration "github.com/GolosTools/golos-vote-bot/config"
 )
 
 func TestGetDomainRegexp(t *testing.T) {
-	var configuration config.Config
-	err := config.LoadConfiguration("../config.json", &configuration)
+	var config configuration.Config
+	err := configuration.LoadConfiguration("../config.json", &config)
 	if err != nil {
 		t.Error(err)
 	}
-	regexp, err := GetDomainRegexp(configuration.Domains)
+	regexp, err := GetDomainRegexp(config.Domains)
 	texts := []string{
 		"https://mapala.net/ru/liora137/diekabr-skii-nizhnii-riedkiie-luchiki-solntsa/",
 		"https://goldvoice.club/@golos.loto/5x36-golos-lottery-1273-7757/",

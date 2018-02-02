@@ -6,6 +6,7 @@ import (
 )
 
 type Config struct {
+	DebugMode          bool     `json:"debug_mode"`
 	TelegramToken      string   `json:"telegram_token"`
 	TelegramBotName    string   `json:"telegram_bot_name"`
 	Account            string   `json:"account"`
@@ -13,7 +14,6 @@ type Config struct {
 	ActiveKey          string   `json:"active_key"`
 	TextRuToken        string   `json:"text_ru_token"`
 	ReferralFee        float32  `json:"referral_fee"`
-	RequiredVotes      int      `json:"required_votes"`
 	InitialUserRating  int      `json:"initial_user_rating"`
 	MaximumOpenedVotes int      `json:"maximum_opened_votes"`
 	PostingInterval    int      `json:"posting_interval"`
