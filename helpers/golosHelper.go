@@ -55,6 +55,7 @@ func Vote(vote models.Vote, database *sql.DB, config configuration.Config) (succ
 	}
 	wg.Wait()
 	successVotesCount = len(credentials) - len(errors)
+	vote.Completed = true
 	_, err = vote.Save(database)
 	if err != nil {
 		return successVotesCount, err

@@ -6,30 +6,31 @@ import (
 )
 
 type Config struct {
-	DebugMode          bool     `json:"debug_mode"`
-	TelegramToken      string   `json:"telegram_token"`
-	TelegramBotName    string   `json:"telegram_bot_name"`
-	Account            string   `json:"account"`
-	PostingKey         string   `json:"posting_key"`
-	ActiveKey          string   `json:"active_key"`
-	TextRuToken        string   `json:"text_ru_token"`
-	ReferralFee        float32  `json:"referral_fee"`
-	InitialUserRating  int      `json:"initial_user_rating"`
-	MaximumOpenedVotes int      `json:"maximum_opened_votes"`
-	PostingInterval    int      `json:"posting_interval"`
-	MinimumPostLength  int      `json:"minimum_post_length"`
-	Developer          string   `json:"developer"`
-	GroupID            int64    `json:"group_id"`
-	GroupLink          string   `json:"group_link"`
-	DatabasePath       string   `json:"database_path"`
-	Domains            []string `json:"domains"`
-	Chain              string   `json:"chain"`
-	Rpc                []string `json:"rpc"`
-	Repository         string   `json:"repository"`
-	IgnoreVP           bool     `json:"ignore_vp"`
-	BannedTags         []string `json:"banned_tags"`
-	Censorship         bool     `json:"censorship"`
-	ReportTags         []string `json:"report_tags"`
+	DebugMode                bool     `json:"debug_mode"`
+	TelegramToken            string   `json:"telegram_token"`
+	TelegramBotName          string   `json:"telegram_bot_name"`
+	Account                  string   `json:"account"`
+	PostingKey               string   `json:"posting_key"`
+	ActiveKey                string   `json:"active_key"`
+	TextRuToken              string   `json:"text_ru_token"`
+	ReferralFee              float32  `json:"referral_fee"`
+	ReferralMinimumPostCount int      `json:"referral_minimum_post_count"`
+	MaximumOpenedVotes       int      `json:"maximum_opened_votes"`
+	PostingInterval          int      `json:"posting_interval"`
+	MinimumPostLength        int      `json:"minimum_post_length"`
+	Developer                string   `json:"developer"`
+	GroupID                  int64    `json:"group_id"`
+	GroupLink                string   `json:"group_link"`
+	DatabasePath             string   `json:"database_path"`
+	Domains                  []string `json:"domains"`
+	Chain                    string   `json:"chain"`
+	Rpc                      []string `json:"rpc"`
+	Repository               string   `json:"repository"`
+	IgnoreVP                 bool     `json:"ignore_vp"`
+	BannedTags               []string `json:"banned_tags"`
+	Censorship               bool     `json:"censorship"`
+	ReportTags               []string `json:"report_tags"`
+	CurationRules            string   `json:"curation_rules"`
 }
 
 func LoadConfiguration(file string, config *Config) error {

@@ -7,7 +7,7 @@
   "active_key": "5...",
   "text_ru_token": "",
   "referral_fee": 5.0,
-  "initial_user_rating": 10,
+  "referral_minimum_post_count": 30,
   "maximum_opened_votes": 3,
   "posting_interval": 480,
   "minimum_post_length": 1000,
@@ -22,5 +22,6 @@
   "ignore_vp": true,
   "banned_tags": ["test", "test1"],
   "censorship": false,
-  "report_tags": ["тест", "тест1"]
+  "report_tags": ["тест", "тест1"],
+  "curation_rules": "Правила курирования. Здесь нужно написать описание правил курирования!"
 }

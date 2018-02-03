@@ -31,8 +31,6 @@ const (
 	buttonRemoveKey     = "🦀Остановить"
 	buttonSetPowerLimit = "💪Настройка"
 	buttonInformation   = "⚓️Информация"
-	buttonWannaCurate   = "Стать куратором"
-	buttonStopCurate    = "Прекратить кураторство"
 )
 
 var (
@@ -154,7 +152,8 @@ func processMessage(update tgbotapi.Update) error {
 			}
 			state.Action = update.Message.Command()
 		case update.Message.Text == buttonAddKey:
-			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в https://golostools.github.io/golos-vote-bot/ "+
+			msg.Text = fmt.Sprintf("Добавь доверенный аккаунт *%s* в "+
+				"[https://golostools.github.io/golos-vote-bot/](https://golostools.github.io/golos-vote-bot/) "+
 				"(или через [форму от vik'a](https://golos.cf/multi/)), "+
 				"а затем скажи мне свой логин на Голосе", config.Account)
 			state.Action = buttonAddKey
@@ -166,6 +165,9 @@ func processMessage(update tgbotapi.Update) error {
 				credential.Active = false
 				credential.Curates = false
 				result, err := credential.Save(database)
+				if err != nil {
+					log.Println(err.Error())
+				}
 				if true == result && err == nil {
 					msg.Text = "Отлично, я больше не буду использовать твой аккаунт при курировании постов. " +
 						"Дополнительно можешь удалить все сторонние ключи из своего аккаунта здесь: " +
@@ -193,34 +195,22 @@ func processMessage(update tgbotapi.Update) error {
 			}
 			encodedUserName := base64.URLEncoding.EncodeToString([]byte(credential.UserName))
 			referralLink := "https://t.me/" + config.TelegramBotName + "?start=" + encodedUserName
-			msg.Text = fmt.Sprintf("Аккаунт: *%s*\n"+
-				"Делегированная сила: *%d%%*\n"+
-				"Ссылка для приглашения: [%s](%s)\n(в случае успеха дает обоим по %.3f Силы Голоса)",
-				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee)
+			msg.Text = fmt.Sprintf("Аккаунт: *%s*, делегированная сила: *%d%%*\n"+
+				"Реферальная ссылка: [%s](%s)\n"+
+				"(дает обоим по %.3f Силы Голоса, "+
+				"у приглашаемого должно быть как минимум %d постов "+
+				"и он не должен взаимодействовать с Голосовалочкой до приглашения)",
+				credential.UserName, credential.Power, referralLink, referralLink, config.ReferralFee, config.ReferralMinimumPostCount)
+			var button tgbotapi.InlineKeyboardButton
+			if models.IsActiveCurator(userID, database) {
+				button = tgbotapi.NewInlineKeyboardButtonData("Прекратить кураторство", "curating_stop")
+			} else {
+				button = tgbotapi.NewInlineKeyboardButtonData("Стать куратором", "curating_start")
+			}
+			keyboard := []tgbotapi.InlineKeyboardButton{button}
+			markup := tgbotapi.NewInlineKeyboardMarkup(keyboard)
+			msg.ReplyMarkup = markup
 			state.Action = buttonInformation
-		case update.Message.Text == buttonWannaCurate:
-			if models.IsActiveCurator(userID, database) {
-				msg.Text = "Ты уже являешься куратором"
-			} else {
-				credential, err := models.GetCredentialByUserID(userID, database)
-				if err == nil && credential.ChatID == 0 {
-					credential.ChatID = chatID
-					credential.Save(database)
-				}
-				state.Action = buttonWannaCurate
-				msg.Text = "Правила курирования"
-			}
-		case update.Message.Text == buttonStopCurate:
-			if models.IsActiveCurator(userID, database) {
-				err = models.DeactivateCurator(userID, database)
-				if err != nil {
-					return nil
-				}
-				msg.Text = "Бремя кураторства покинуло тебя. Когда вдоволь насладишься свободой - возвращайся"
-				state.Action = "deactivatedCurator"
-			} else {
-				msg.Text = "То, что мертво - умереть не может. Так и ты - нельзя отказаться от курирования, не будучи куратором"
-			}
 		case domainRegexp.MatchString(update.Message.Text):
 			msg.ReplyToMessageID = update.Message.MessageID
 
@@ -427,14 +417,6 @@ func processMessage(update tgbotapi.Update) error {
 				}
 				state.Action = "updatedPower"
 			}
-		case state.Action == buttonWannaCurate:
-			if update.Message.Text == "Я все понял, все еще хочу курировать" {
-				if models.ActivateCurator(userID, database) != nil {
-					return nil
-				}
-				msg.Text = "Отлично, теперь ты можешь участвовать в курировании постов"
-				state.Action = "activatedCurator"
-			}
 		default:
 			if update.Message.Chat.Type != "private" {
 				return nil
@@ -451,68 +433,115 @@ func processMessage(update tgbotapi.Update) error {
 			fourthButton := tgbotapi.NewKeyboardButton(buttonInformation)
 			secondButtonRow := []tgbotapi.KeyboardButton{thirdButton, fourthButton}
 
-			fifthButton := tgbotapi.NewKeyboardButton(buttonWannaCurate)
-			sixthButton := tgbotapi.NewKeyboardButton(buttonStopCurate)
-			thirdButtonRow := []tgbotapi.KeyboardButton{fifthButton, sixthButton}
-
-			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow, thirdButtonRow)
+			keyboard := tgbotapi.NewReplyKeyboard(firstButtonRow, secondButtonRow)
 			msg.ReplyMarkup = keyboard
 		}
 	} else if update.CallbackQuery != nil {
 		arr := strings.Split(update.CallbackQuery.Data, "_")
 		voteStringID, action := arr[0], arr[1]
-		voteID, err := strconv.ParseInt(voteStringID, 10, 64)
-		if err != nil {
-			return err
-		}
+		if voteStringID == "curating" {
+			switch action {
+			case "start":
+				if models.IsActiveCurator(userID, database) {
+					msg.Text = "Ты уже являешься куратором"
+					bot.Send(msg)
+					return nil
+				}
+				credential, err := models.GetCredentialByUserID(userID, database)
+				if err == nil && credential.ChatID == 0 {
+					credential.ChatID = chatID
+					credential.Save(database)
+				}
+				msg := tgbotapi.NewEditMessageText(chatID, update.CallbackQuery.Message.MessageID, "")
+				msg.Text = config.CurationRules
+				approveButton := tgbotapi.NewInlineKeyboardButtonData("🐬‍️Я справлюсь", "curating_approve")
+				declineButton := tgbotapi.NewInlineKeyboardButtonData("🐡‍Слишком сложно", "curating_decline")
+				keyboard := []tgbotapi.InlineKeyboardButton{approveButton, declineButton}
+				markup := tgbotapi.NewInlineKeyboardMarkup(keyboard)
+				msg.ReplyMarkup = &markup
+				bot.Send(msg)
+			case "approve":
+				err = models.ActivateCurator(userID, database)
+				if err != nil {
+					return err
+				}
+				msg := tgbotapi.NewEditMessageText(chatID, update.CallbackQuery.Message.MessageID, "")
+				msg.Text = "Отлично, теперь ты будешь участвовать в курировании постов. " +
+					"Скоро я начну присылать тебе ссылки, подожди немного"
+				bot.Send(msg)
+			case "decline":
+				msg := tgbotapi.NewEditMessageText(chatID, update.CallbackQuery.Message.MessageID, "")
+				msg.Text = "Хороший выбор. Курирование чужих постов — сложный и неблагодарный процесс. " +
+					"Лучше пиши свои посты и скидывай мне ссылки на них, а кураторы пусть делают свою работу!"
+				bot.Send(msg)
+			case "stop":
+				msg := tgbotapi.NewEditMessageText(chatID, update.CallbackQuery.Message.MessageID, "")
+				if models.IsActiveCurator(userID, database) {
+					err = models.DeactivateCurator(userID, database)
+					if err != nil {
+						return nil
+					}
+					msg.Text = "Бремя кураторства покинуло тебя. Когда вдоволь насладишься свободой — возвращайся!"
+				} else {
+					msg.Text = "То, что мертво — умереть не может. Так и ты — нельзя отказаться от курирования, не будучи куратором"
+				}
+				bot.Send(msg)
+			default:
+				return errors.New("неподдерживаемое действие: " + action)
+			}
+		} else {
+			voteID, err := strconv.ParseInt(voteStringID, 10, 64)
+			if err != nil {
+				return err
+			}
+			if !models.IsActiveCurator(userID, database) {
+				config := tgbotapi.CallbackConfig{
+					CallbackQueryID: update.CallbackQuery.ID,
+					Text:            "Чекни свои привелегии. Ты не куратор!",
+				}
+				bot.AnswerCallbackQuery(config)
+				return nil
+			}
 
-		if !models.IsActiveCurator(userID, database) {
-			config := tgbotapi.CallbackConfig{
+			voteModel := models.GetVote(database, voteID)
+			if voteModel.Completed {
+				return nil
+			}
+
+			isGood := action == "good"
+			response := models.Response{
+				UserID: userID,
+				VoteID: voteID,
+				Result: isGood,
+				Date:   time.Now(),
+			}
+			text := "И да настигнет Админская кара всех тех, кто пытается злоупотреблять своей властью и голосовать несколько раз! Админь"
+			responseExists := response.Exists(database)
+			if !responseExists {
+				text = "Голос принят"
+				messageID, err := helpers.GetMessageID(update)
+				if err != nil {
+					return err
+				}
+				msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
+				msg.Text = text
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Println(err.Error())
+				}
+			}
+
+			callbackConfig := tgbotapi.CallbackConfig{
 				CallbackQueryID: update.CallbackQuery.ID,
-				Text:            "Чекни свои привелегии. Ты не куратор!",
+				Text:            text,
 			}
-			bot.AnswerCallbackQuery(config)
-			return nil
-		}
+			bot.AnswerCallbackQuery(callbackConfig)
 
-		voteModel := models.GetVote(database, voteID)
-		if voteModel.Completed {
-			return nil
-		}
-
-		isGood := action == "good"
-		response := models.Response{
-			UserID: userID,
-			VoteID: voteID,
-			Result: isGood,
-			Date:   time.Now(),
-		}
-		text := "И да настигнет Админская кара всех тех, кто пытается злоупотреблять своей властью и голосовать несколько раз! Админь"
-		responseExists := response.Exists(database)
-		if !responseExists {
-			text = "Голос принят"
-			messageID, err := helpers.GetMessageID(update)
-			if err != nil {
-				return err
-			}
-			msg := tgbotapi.NewEditMessageText(chatID, messageID, "")
-			msg.Text = text
-			_, err = bot.Send(msg)
-			if err != nil {
-				log.Println(err.Error())
-			}
-		}
-
-		callbackConfig := tgbotapi.CallbackConfig{
-			CallbackQueryID: update.CallbackQuery.ID,
-			Text:            text,
-		}
-		bot.AnswerCallbackQuery(callbackConfig)
-
-		if !responseExists {
-			_, err := response.Save(database)
-			if err != nil {
-				return err
+			if !responseExists {
+				_, err := response.Save(database)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -676,8 +705,7 @@ func sendReferralFee(referrer string, referral string) {
 		log.Println("Не получили аккаунт " + referral)
 		return
 	}
-	const minPostCount int64 = 30
-	if accounts[0].PostCount.Int64() < minPostCount {
+	if accounts[0].PostCount.Int64() < int64(config.ReferralMinimumPostCount) {
 		log.Printf("За новичка %s награды не будет, слишком мало постов", referral)
 		return
 	}
@@ -892,8 +920,8 @@ func curationMotivator() {
 					}
 					curatorResponses := models.GetNumResponsesForMotivationForUserID(userID, lastRewardDate, database)
 					goldForCurator := curatorResponses / needResponsesToBeRewarded
-					ammount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
-					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", ammount)
+					amount := fmt.Sprintf("%d.%.3d GBG", goldForCurator/1000, goldForCurator%1000)
+					err = golos.Transfer(config.Account, credential.UserName, "Вознаграждение для кураторов", amount)
 				}
 			}
 		}
